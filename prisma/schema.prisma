@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider   = "prisma-client"
+  output     = "../src/generated/prisma"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  CONTRIBUTOR
+  ADMIN
+  SUPERADMIN
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String?
+  googleId          String?   @unique
+  name              String    @db.VarChar(255)
+  bio               String?
+  image             String?
+  gender            String?
+  phoneNumber       String?
+  country           String?
+  state             String?
+  careerPath        String?
+  levelOfExperience String?
+  referralMode      String?
+  isSubscribed      Boolean   @default(false)
+  isVerified        Boolean   @default(false)
+  role              Role      @default(USER)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+  tokens            Token[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum TokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+model Token {
+  id      String    @id @default(cuid())
+  userId  String
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token   String    @unique @default(cuid())
+  type    TokenType
+  expires DateTime
+
+  @@index([token])
+}
