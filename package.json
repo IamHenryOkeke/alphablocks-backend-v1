@@ -4,7 +4,9 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "nodemon src/server.ts",
+    "worker:email": "nodemon src/workers/email.worker.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run worker:email\"",
     "build": "prisma generate && tsc",
     "deploy:migrate": "prisma migrate deploy",
     "start": "node dist/server.js",
@@ -31,6 +33,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/passport-jwt": "^4.0.1",
+    "concurrently": "^9.2.1",
     "eslint": "^9.27.0",
     "globals": "^16.2.0",
     "husky": "^9.1.7",
