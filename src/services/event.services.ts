@@ -72,10 +72,10 @@ export const getEventById = async (
 
   const values = {
     id: eventId,
+    deletedAt: null,
     ...(!user || user.role === "USER" || user.role === "CONTRIBUTOR"
       ? {
           isPublished: true,
-          deletedAt: null,
         }
       : {
           creator: { role: user.role },
