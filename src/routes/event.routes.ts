@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { isAdmin, isAuthenticated } from "../middlewares/auth.middleware";
+import {
+  roleAuthorization,
+  isAuthenticated,
+} from "../middlewares/auth.middleware";
 import { optionalAuth } from "../middlewares/optionalAuth.middleware";
 import { validate } from "../middlewares/validation";
 import * as schemas from "../lib/schemas";
@@ -23,7 +26,7 @@ eventRouter.get(
   eventControllers.getEventById,
 );
 
-eventRouter.use(isAuthenticated, isAdmin);
+eventRouter.use(isAuthenticated, roleAuthorization("ADMIN"));
 
 eventRouter.post(
   "/",

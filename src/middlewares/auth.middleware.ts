@@ -21,10 +21,22 @@ export const isAuthenticated = (
   )(req, res, next);
 };
 
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user && req.user.role === "ADMIN") {
-    return next();
-  } else {
-    throw new AppError("You are not authorized to access this resource", 403);
-  }
+export const roleAuthorization = (role: string | string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (Array.isArray(role)) {
+      if (req.user && role.includes(req.user.role)) {
+        return next();
+      } else {
+        throw new AppError(
+          "You are not authorized to access this resource",
+          403,
+        );
+      }
+    }
+    if (req.user && req.user.role === role) {
+      return next();
+    } else {
+      throw new AppError("You are not authorized to access this resource", 403);
+    }
+  };
 };
