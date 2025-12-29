@@ -20,9 +20,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
 app.use("/api/auth", routes.authRouter);
+app.use("/api/events", routes.eventRouter);
 app.use("/api", routes.indexRouter);
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     status: 404,

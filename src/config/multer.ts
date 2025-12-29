@@ -10,22 +10,21 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Set up storage (files will be saved in 'uploads' folder)
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (_req, _file) => ({
-    folder: "cloudinary-folder",
+    folder: "AlphaBlocks",
     allowed_formats: ["jpg", "png", "jpeg"],
   }),
 });
 
-// File filter function (allows only specific file types)
 const fileFilter = (
   req: e.Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
 ) => {
   const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(
       new AppError("Invalid input", 400, {
@@ -43,7 +42,6 @@ const fileFilter = (
   cb(null, true);
 };
 
-// Multer middleware configuration
 export const upload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 },

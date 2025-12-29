@@ -29,6 +29,7 @@ export const validate =
           400,
           z.flattenError(result.error).fieldErrors,
         );
+      req.validatedQuery = result.data;
     }
 
     if (schemas.params) {
@@ -39,6 +40,7 @@ export const validate =
           400,
           z.flattenError(result.error).fieldErrors,
         );
+      req.params = result.data as Request["params"];
     }
 
     next();

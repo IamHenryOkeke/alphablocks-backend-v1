@@ -25,8 +25,12 @@ export const optionalAuth = async (
         where: { id: decoded.id },
         select: {
           id: true,
+          name: true,
+          image: true,
           email: true,
           role: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
 
@@ -37,7 +41,6 @@ export const optionalAuth = async (
 
     next();
   } catch (error) {
-    // If token is invalid, still continue as guest
     console.error("Error in optionalAuth middleware:", error);
     next();
   }
