@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from "../../generated/prisma/enums";
 import { JwtPayload } from "../auth";
 
 declare global {

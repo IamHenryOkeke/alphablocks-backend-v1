@@ -55,7 +55,7 @@ export const updateUserProfileSchema = z.object({
   image: z.url({ message: "Avatar must be a valid url" }).optional(),
 });
 
-export const eventQuerySchema = z.object({
+export const querySchema = z.object({
   page: z
     .string()
     .regex(/^\d+$/, { message: "Page must be a positive integer" })
@@ -110,5 +110,26 @@ export const addEventSchema = z
   });
 
 export const updateEventSchema = addEventSchema.partial().extend({
+  isPublished: z.boolean().optional(),
+});
+
+export const blogParamSchema = z.object({
+  blogId: z.cuid(),
+});
+
+export const createBlogSchema = z.object({
+  title: z
+    .string()
+    .min(5, { message: "Title must be at least 5 characters long" }),
+  description: z
+    .string()
+    .min(10, { message: "Description must be at least 10 characters long" }),
+  thumbnailImage: z.url({ message: "Must be a valid url" }),
+  content: z
+    .string()
+    .min(20, { message: "Content must be at least 20 characters long" }),
+});
+
+export const updateBlogSchema = createBlogSchema.partial().extend({
   isPublished: z.boolean().optional(),
 });
