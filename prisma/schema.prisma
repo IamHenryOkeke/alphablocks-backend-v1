@@ -22,11 +22,11 @@ enum Role {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
+  id                String     @id @default(cuid())
+  email             String     @unique
   password          String?
-  googleId          String?   @unique
-  name              String    @db.VarChar(255)
+  googleId          String?    @unique
+  name              String     @db.VarChar(255)
   bio               String?
   image             String?
   gender            String?
@@ -36,16 +36,16 @@ model User {
   careerPath        String?
   levelOfExperience String?
   referralMode      String?
-  isSubscribed      Boolean   @default(false)
-  isVerified        Boolean   @default(false)
-  role              Role      @default(USER)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  isSubscribed      Boolean    @default(false)
+  isVerified        Boolean    @default(false)
+  role              Role       @default(USER)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
   deletedAt         DateTime?
   tokens            Token[]
   events            Event[]
+  blogPosts         BlogPost[]
 
-  @@index([email])
   @@index([role])
 }
 
@@ -61,8 +61,6 @@ model Token {
   token   String    @unique @default(cuid())
   type    TokenType
   expires DateTime
-
-  @@index([token])
 }
 
 model Event {
@@ -83,6 +81,10 @@ model Event {
   updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
   eventImages EventImage[]
+
+  @@index([isPublished, publishedAt])
+  @@index([creatorId, createdAt])
+  @@index([deletedAt])
 }
 
 model EventImage {
@@ -90,4 +92,26 @@ model EventImage {
   imageUrl String
   eventId  String
   event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model BlogPost {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  description    String
+  thumbnailImage String
+  content        String
+  isPublished    Boolean   @default(false)
+  publishedAt    DateTime?
+  author         User      @relation(fields: [authorId], references: [id])
+  authorId       String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([isPublished, publishedAt])
+  @@index([authorId, createdAt])
+  @@index([deletedAt])
 }
