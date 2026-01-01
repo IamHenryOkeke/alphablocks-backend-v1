@@ -1,5 +1,5 @@
 import { AppError } from "../error/errorHandler";
-import { Prisma } from "../generated/prisma/client";
+import { Prisma, Role } from "../generated/prisma/client";
 import prisma from "../lib/prisma";
 
 type GetEventsArgs = {
@@ -9,12 +9,10 @@ type GetEventsArgs = {
   orderBy?: Prisma.EventOrderByWithRelationInput;
 };
 
-export async function getAllEvents({
-  where,
-  take,
-  skip,
-  orderBy,
-}: GetEventsArgs) {
+export async function getAllEvents(
+  { where, take, skip, orderBy }: GetEventsArgs,
+  role?: Role,
+) {
   try {
     const [events, total] = await Promise.all([
       prisma.event.findMany({
@@ -31,8 +29,7 @@ export async function getAllEvents({
           endDate: true,
           location: true,
           publishedAt: true,
-          ...(where?.creator?.role === "ADMIN" ||
-          where?.creator?.role === "SUPERADMIN"
+          ...(role === "ADMIN" || role === "SUPERADMIN"
             ? {
                 isPublished: true,
                 creatorId: true,
@@ -59,7 +56,7 @@ export async function getAllEvents({
     };
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error occurred while finding products:", error.message);
+      console.error("Error occurred while finding events:", error.message);
     } else {
       console.error("Unknown error:", error);
     }
@@ -67,7 +64,59 @@ export async function getAllEvents({
   }
 }
 
-export async function getEventByIdOrSlug(values: Prisma.EventWhereUniqueInput) {
+export async function getLatestEvent(
+  values: Prisma.EventFindFirstArgs["where"],
+  role?: Role,
+) {
+  try {
+    const data = await prisma.event.findFirst({
+      where: values,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        details: true,
+        startDate: true,
+        endDate: true,
+        location: true,
+        publishedAt: true,
+        ...(role === "ADMIN" || role === "SUPERADMIN"
+          ? {
+              creatorId: true,
+              isPublished: true,
+              deletedAt: true,
+              createdAt: true,
+              updatedAt: true,
+            }
+          : {}),
+        eventImages: {
+          select: {
+            imageUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        publishedAt: "desc",
+      },
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(
+        "Error occurred while finding latest event:",
+        error.message,
+      );
+    } else {
+      console.error("Unknown error:", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
+export async function getEvent(
+  values: Prisma.EventWhereUniqueInput,
+  role?: Role,
+) {
   try {
     const data = await prisma.event.findUnique({
       where: values,
@@ -80,8 +129,7 @@ export async function getEventByIdOrSlug(values: Prisma.EventWhereUniqueInput) {
         endDate: true,
         location: true,
         publishedAt: true,
-        ...(values.creator?.role === "ADMIN" ||
-        values.creator?.role === "SUPERADMIN"
+        ...(role === "ADMIN" || role === "SUPERADMIN"
           ? {
               creatorId: true,
               isPublished: true,
