@@ -28,8 +28,8 @@ export async function getAllEvents(
           startDate: true,
           endDate: true,
           location: true,
+          publishedAt: true,
           ...((role === "ADMIN" || role === "SUPERADMIN") && {
-            publishedAt: true,
             isPublished: true,
             creatorId: true,
             deletedAt: true,
@@ -77,8 +77,8 @@ export async function getLatestEvent(
         startDate: true,
         endDate: true,
         location: true,
+        publishedAt: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
-          publishedAt: true,
           creatorId: true,
           isPublished: true,
           deletedAt: true,

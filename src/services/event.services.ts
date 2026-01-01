@@ -13,12 +13,14 @@ export const getAllEvents = async (
 ) => {
   const { searchTerm, page, limit } = queryParams;
 
-  const cacheKey = `events:all:${JSON.stringify({
-    searchTerm: searchTerm ?? null,
-    page,
-    limit,
+  const cachePayload = {
     role: user?.role ?? "USER",
-  })}`;
+    searchTerm: searchTerm?.trim().toLowerCase() ?? null,
+    page: page,
+    limit: limit,
+  };
+
+  const cacheKey = `events:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
   if (cached) {

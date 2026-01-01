@@ -13,13 +13,15 @@ export const getAllBlogPosts = async (
 ) => {
   const { searchTerm, page, limit } = queryParams;
 
-  const cacheKey = `blogs:all:${JSON.stringify({
-    searchTerm: searchTerm ?? null,
-    page,
-    limit,
+  const cachePayload = {
     role: user?.role ?? "USER",
     userId: user?.role === "CONTRIBUTOR" ? user.id : null,
-  })}`;
+    searchTerm: searchTerm?.trim().toLowerCase() ?? null,
+    page: page ?? 1,
+    limit: limit ?? 10,
+  };
+
+  const cacheKey = `blogs:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
   if (cached) {
@@ -199,7 +201,7 @@ export const deleteBlogPost = async (blogId: string) => {
     throw new AppError("Blog post not found", 404);
   }
 
-  const deletedPost = await blogQueries.deleteBlogPost(blogId);
+  const post = await blogQueries.deleteBlogPost(blogId);
 
   const keys = await redis.keys(`blogs:id:${blogId}:*`);
   if (keys.length) {
@@ -211,5 +213,5 @@ export const deleteBlogPost = async (blogId: string) => {
     await redis.del(allKeys);
   }
 
-  return deletedPost;
+  return post;
 };

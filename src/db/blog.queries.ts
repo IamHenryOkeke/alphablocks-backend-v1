@@ -14,7 +14,7 @@ export async function getAllBlogPosts(
   role: Role,
 ) {
   try {
-    const [blogPosts, total] = await Promise.all([
+    const [posts, total] = await Promise.all([
       prisma.blogPost.findMany({
         where,
         take,
@@ -24,23 +24,22 @@ export async function getAllBlogPosts(
           id: true,
           title: true,
           description: true,
+          content: true,
           publishedAt: true,
-          ...(role !== "USER"
-            ? {
-                isPublished: true,
-                authorId: true,
-                deletedAt: true,
-                createdAt: true,
-                updatedAt: true,
-              }
-            : {}),
+          ...(role !== "USER" && {
+            isPublished: true,
+            authorId: true,
+            deletedAt: true,
+            createdAt: true,
+            updatedAt: true,
+          }),
         },
       }),
       prisma.blogPost.count({ where }),
     ]);
 
     return {
-      blogPosts,
+      posts,
       total,
       totalPage: take ? Math.ceil(total / take) : 1,
       page: skip && take ? Math.ceil(skip / take) + 1 : 1,
@@ -69,6 +68,7 @@ export async function getLatestBlogPost(
         id: true,
         title: true,
         description: true,
+        content: true,
         publishedAt: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
           creatorId: true,
@@ -123,6 +123,7 @@ export async function getBlogPost(
         id: true,
         title: true,
         description: true,
+        content: true,
         publishedAt: true,
         ...(role !== "USER"
           ? {
