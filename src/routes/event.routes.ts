@@ -19,7 +19,7 @@ eventRouter.get(
   eventControllers.getAllEvents,
 );
 
-eventRouter.get("/latest", optionalAuth, eventControllers.getAllEvents);
+eventRouter.get("/latest", optionalAuth, eventControllers.getLatestEvent);
 
 eventRouter.get(
   "/:eventId",

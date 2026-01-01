@@ -63,20 +63,16 @@ export const getAllEvents = async (
 
 export const getLatestEvent = async (user: Express.User | null) => {
   const cacheKey = `events:latest:${user?.role ?? "USER"}`;
-
   const cacheData = await redis.get(cacheKey);
 
   if (cacheData) return JSON.parse(cacheData);
 
   const values = {
     deletedAt: null,
-    ...(!user || user.role === "USER" || user.role === "CONTRIBUTOR"
-      ? {
-          isPublished: true,
-        }
-      : {
-          creator: { role: user.role },
-        }),
+    ...(user?.role !== "ADMIN" &&
+      user?.role !== "SUPERADMIN" && {
+        isPublished: true,
+      }),
   };
 
   const event = await eventQueries.getLatestEvent(values, user?.role);

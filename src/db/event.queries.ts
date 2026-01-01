@@ -28,16 +28,14 @@ export async function getAllEvents(
           startDate: true,
           endDate: true,
           location: true,
-          publishedAt: true,
-          ...(role === "ADMIN" || role === "SUPERADMIN"
-            ? {
-                isPublished: true,
-                creatorId: true,
-                deletedAt: true,
-                createdAt: true,
-                updatedAt: true,
-              }
-            : {}),
+          ...((role === "ADMIN" || role === "SUPERADMIN") && {
+            publishedAt: true,
+            isPublished: true,
+            creatorId: true,
+            deletedAt: true,
+            createdAt: true,
+            updatedAt: true,
+          }),
           eventImages: {
             select: {
               imageUrl: true,
@@ -79,16 +77,14 @@ export async function getLatestEvent(
         startDate: true,
         endDate: true,
         location: true,
-        publishedAt: true,
-        ...(role === "ADMIN" || role === "SUPERADMIN"
-          ? {
-              creatorId: true,
-              isPublished: true,
-              deletedAt: true,
-              createdAt: true,
-              updatedAt: true,
-            }
-          : {}),
+        ...((role === "ADMIN" || role === "SUPERADMIN") && {
+          publishedAt: true,
+          creatorId: true,
+          isPublished: true,
+          deletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        }),
         eventImages: {
           select: {
             imageUrl: true,
@@ -129,15 +125,13 @@ export async function getEvent(
         endDate: true,
         location: true,
         publishedAt: true,
-        ...(role === "ADMIN" || role === "SUPERADMIN"
-          ? {
-              creatorId: true,
-              isPublished: true,
-              deletedAt: true,
-              createdAt: true,
-              updatedAt: true,
-            }
-          : {}),
+        ...((role === "ADMIN" || role === "SUPERADMIN") && {
+          creatorId: true,
+          isPublished: true,
+          deletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        }),
         eventImages: {
           select: {
             imageUrl: true,
