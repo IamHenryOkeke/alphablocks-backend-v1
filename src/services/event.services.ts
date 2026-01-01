@@ -12,52 +12,80 @@ export const getAllEvents = async (
   },
 ) => {
   const { searchTerm, page, limit } = queryParams;
-  const cacheKey = `events:all:${JSON.stringify({
-    searchTerm: searchTerm ?? null,
-    page,
-    limit,
+
+  const cachePayload = {
     role: user?.role ?? "USER",
-  })}`;
+    searchTerm: searchTerm?.trim().toLowerCase() ?? null,
+    page: page,
+    limit: limit,
+  };
+
+  const cacheKey = `events:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
-
   if (cached) {
     return JSON.parse(cached);
   }
 
   const where: Prisma.EventWhereInput = {
     deletedAt: null,
-    ...(!user || user.role === "USER" || user.role === "CONTRIBUTOR"
-      ? {
-          isPublished: true,
-        }
-      : {
-          creator: { role: user.role },
-        }),
     ...(searchTerm && {
       title: {
         contains: searchTerm,
         mode: "insensitive",
       },
     }),
+    ...(user?.role !== "ADMIN" &&
+      user?.role !== "SUPERADMIN" && {
+        isPublished: true,
+      }),
   };
 
-  const events = await eventQueries.getAllEvents({
-    where,
-    skip: (page - 1) * limit,
-    take: limit,
-    orderBy: {
-      ...(!user || user.role === "USER" || user.role === "CONTRIBUTOR"
-        ? { publishedAt: "desc" }
-        : { createdAt: "desc" }),
+  const orderBy =
+    user?.role === "ADMIN" || user?.role === "SUPERADMIN"
+      ? { createdAt: "desc" as const }
+      : { publishedAt: "desc" as const };
+
+  const events = await eventQueries.getAllEvents(
+    {
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy,
     },
-  });
+    user?.role ?? "USER",
+  );
 
   await redis.set(cacheKey, JSON.stringify(events), {
     EX: 60 * 5,
   });
 
   return events;
+};
+
+export const getLatestEvent = async (user: Express.User | null) => {
+  const cacheKey = `events:latest:${user?.role ?? "USER"}`;
+  const cacheData = await redis.get(cacheKey);
+
+  if (cacheData) return JSON.parse(cacheData);
+
+  const values = {
+    deletedAt: null,
+    ...(user?.role !== "ADMIN" &&
+      user?.role !== "SUPERADMIN" && {
+        isPublished: true,
+      }),
+  };
+
+  const event = await eventQueries.getLatestEvent(values, user?.role);
+
+  if (!event) throw new AppError("Latest Event not found", 404);
+
+  await redis.set(cacheKey, JSON.stringify(event), {
+    EX: 60 * 5,
+  });
+
+  return event;
 };
 
 export const getEventById = async (
@@ -73,16 +101,12 @@ export const getEventById = async (
   const values = {
     id: eventId,
     deletedAt: null,
-    ...(!user || user.role === "USER" || user.role === "CONTRIBUTOR"
-      ? {
-          isPublished: true,
-        }
-      : {
-          creator: { role: user.role },
-        }),
+    ...((!user || user.role === "USER" || user.role === "CONTRIBUTOR") && {
+      isPublished: true,
+    }),
   };
 
-  const event = await eventQueries.getEventByIdOrSlug(values);
+  const event = await eventQueries.getEvent(values, user?.role);
 
   if (!event) throw new AppError("Event not found", 404);
 
@@ -96,10 +120,10 @@ export const getEventById = async (
 export const createEvent = async (eventData: Prisma.EventCreateInput) => {
   const { slug } = eventData;
 
-  const existingEvent = await eventQueries.getEventByIdOrSlug({ slug });
+  const existingEvent = await eventQueries.getEvent({ slug });
 
   if (existingEvent) {
-    throw new AppError("Event with this name already exists", 400);
+    throw new AppError(`Event with this name already exists`, 400);
   }
 
   const newEvent = await eventQueries.createEvent(eventData);
@@ -120,7 +144,7 @@ export const updateEvent = async (
   eventId: string,
   data: Prisma.EventUpdateInput,
 ) => {
-  const existingEvent = await eventQueries.getEventByIdOrSlug({
+  const existingEvent = await eventQueries.getEvent({
     id: eventId,
   });
 
@@ -129,9 +153,12 @@ export const updateEvent = async (
   const { slug } = data;
 
   if (slug && typeof slug === "string") {
-    const eventWithSlug = await eventQueries.getEventByIdOrSlug({ slug });
+    const eventWithSlug = await eventQueries.getEvent({ slug });
     if (eventWithSlug && eventWithSlug.id !== eventId)
-      throw new AppError("Event with this name already exists", 400);
+      throw new AppError(
+        `Event with title '${data.title}' already exists`,
+        400,
+      );
   }
 
   const updatedEvent = await eventQueries.updateEvent(eventId, data);
@@ -150,7 +177,7 @@ export const updateEvent = async (
 };
 
 export const deleteEvent = async (eventId: string) => {
-  const existingEvent = await eventQueries.getEventByIdOrSlug({
+  const existingEvent = await eventQueries.getEvent({
     id: eventId,
   });
 

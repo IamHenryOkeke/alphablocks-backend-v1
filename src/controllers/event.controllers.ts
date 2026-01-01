@@ -15,6 +15,18 @@ export const getAllEvents = asyncHandler(
   },
 );
 
+export const getLatestEvent = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const user = req.user as Express.User;
+    const data = await eventService.getLatestEvent(user);
+
+    res.status(200).json({
+      message: "Events fetched successfully",
+      data,
+    });
+  },
+);
+
 export const getEventById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user as Express.User;

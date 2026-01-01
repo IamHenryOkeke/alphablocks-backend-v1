@@ -21,6 +21,7 @@ app.use(passport.initialize());
 
 app.use("/api/auth", routes.authRouter);
 app.use("/api/events", routes.eventRouter);
+app.use("/api/blogs", routes.blogRouter);
 app.use("/api", routes.indexRouter);
 
 app.use((req, res) => {

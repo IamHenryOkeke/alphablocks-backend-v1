@@ -24,6 +24,7 @@ const fileFilter = (
   cb: multer.FileFilterCallback,
 ) => {
   const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+  const fieldname = file.fieldname;
 
   if (!allowedTypes.includes(file.mimetype)) {
     return cb(
@@ -32,10 +33,10 @@ const fileFilter = (
       }),
     );
   }
-  if (file.size > 2 * 1024 * 1024) {
+  if (file.size > 1 * 1024 * 1024) {
     return cb(
       new AppError("File too large", 400, {
-        avatar: "File size should be less than 2MB",
+        [`${fieldname}`]: "File size should be less than 1MB",
       }),
     );
   }
@@ -44,6 +45,6 @@ const fileFilter = (
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter,
 });

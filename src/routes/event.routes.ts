@@ -15,9 +15,11 @@ const eventRouter = Router();
 eventRouter.get(
   "/all",
   optionalAuth,
-  validate({ query: schemas.eventQuerySchema }),
+  validate({ query: schemas.querySchema }),
   eventControllers.getAllEvents,
 );
+
+eventRouter.get("/latest", optionalAuth, eventControllers.getLatestEvent);
 
 eventRouter.get(
   "/:eventId",
