@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import passport from "../config/passport-config";
 import { AppError } from "../error/errorHandler";
+import { Role } from "../generated/prisma/enums";
 
 export const isAuthenticated = (
   req: Request,
@@ -21,7 +22,7 @@ export const isAuthenticated = (
   )(req, res, next);
 };
 
-export const roleAuthorization = (role: string | string[]) => {
+export const roleAuthorization = (role: Role | Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (Array.isArray(role)) {
       if (req.user && role.includes(req.user.role)) {
