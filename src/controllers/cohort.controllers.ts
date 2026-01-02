@@ -1,91 +1,88 @@
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
-import * as eventService from "../services/event.services";
+import * as cohortService from "../services/cohort.services";
 import { generateSlug } from "../utils/slug";
 
-export const getAllEvents = asyncHandler(
+export const getAllCohorts = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user as Express.User;
-    const data = await eventService.getAllEvents(user, req.validatedQuery);
+    const data = await cohortService.getAllCohorts(user, req.validatedQuery);
 
     res.status(200).json({
-      message: "Events fetched successfully",
+      message: "Cohorts fetched successfully",
       data,
     });
   },
 );
 
-export const getLatestEvent = asyncHandler(
+export const getLatestCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user as Express.User;
-    const data = await eventService.getLatestEvent(user);
+    const data = await cohortService.getLatestCohort(user);
 
     res.status(200).json({
-      message: "Events fetched successfully",
+      message: "Latest cohort fetched successfully",
       data,
     });
   },
 );
 
-export const getEventById = asyncHandler(
+export const getCohortById = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user as Express.User;
-    const { eventId } = req.params;
+    const { cohortId } = req.params;
 
-    const data = await eventService.getEventById(user, eventId);
+    const data = await cohortService.getCohortById(user, cohortId);
 
     res.status(200).json({
-      message: "Event fetched successfully",
+      message: "Cohort fetched successfully",
       data,
     });
   },
 );
 
-export const createEvent = asyncHandler(
+export const createCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const {
       title,
       thumbnailImage,
-      eventImages,
       description,
       details,
       startDate,
       endDate,
-      location,
+      venue,
+      classTime,
     } = req.body;
+
     const user = req.user as Express.User;
 
-    const createEventData = {
+    const createCohortData = {
       title,
       slug: generateSlug(title),
       thumbnailImage,
-      ...(eventImages && {
-        eventImages: {
-          create: eventImages.map((imgUrl: string) => ({ imageUrl: imgUrl })),
-        },
-      }),
       description,
       details,
       startDate,
       endDate,
-      location,
+      venue,
+      classTime,
       creator: {
         connect: { id: user.id },
       },
     };
 
-    const data = await eventService.createEvent(createEventData);
+    const data = await cohortService.createCohort(createCohortData);
 
     res.status(201).json({
-      message: "Event created successfully",
+      message: "Cohort created successfully",
       data,
     });
   },
 );
 
-export const updateEvent = asyncHandler(
+export const updateCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { eventId } = req.params;
+    const { cohortId } = req.params;
     const {
       title,
       thumbnailImage,
@@ -93,11 +90,13 @@ export const updateEvent = asyncHandler(
       details,
       startDate,
       endDate,
-      location,
+      venue,
+      classTime,
       isPublished,
+      nftLiveStatus,
     } = req.body;
 
-    const updateEventData = {
+    const updateCohortData = {
       ...(title && { title }),
       ...(description && { description }),
       ...(title && { slug: generateSlug(title) }),
@@ -105,30 +104,34 @@ export const updateEvent = asyncHandler(
       ...(details && { details }),
       ...(startDate && { startDate }),
       ...(endDate && { endDate }),
-      ...(location && { location }),
+      ...(venue && { venue }),
+      ...(classTime && { classTime }),
+      ...(nftLiveStatus && {
+        nftLiveStatus: nftLiveStatus === "1" ? true : false,
+      }),
       ...(isPublished && {
         isPublished: isPublished === "1" ? true : false,
         publishedAt: isPublished === "1" ? new Date() : null,
       }),
     };
 
-    const data = await eventService.updateEvent(eventId, updateEventData);
+    const data = await cohortService.updateCohort(cohortId, updateCohortData);
 
     res.status(200).json({
-      message: "Event updated successfully",
+      message: "Cohort updated successfully",
       data,
     });
   },
 );
 
-export const deleteEvent = asyncHandler(
+export const deleteCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { eventId } = req.params;
+    const { cohortId } = req.params;
 
-    await eventService.deleteEvent(eventId);
+    await cohortService.deleteCohort(cohortId);
 
     res.status(200).json({
-      message: "Event deleted successfully",
+      message: "Cohort deleted successfully",
     });
   },
 );

@@ -77,12 +77,12 @@ export const eventParamSchema = z.object({
   eventId: z.cuid(),
 });
 
-export const addEventSchema = z
+export const createEventSchema = z
   .object({
     title: z
       .string()
       .min(5, { message: "Title must be at least 5 characters long" }),
-    image: z.url({ message: "Must be a valid url" }),
+    thumbnailImage: z.url({ message: "Must be a valid url" }),
     eventImages: z
       .array(z.url({ message: "Each event image must be a valid url" }))
       .optional(),
@@ -109,8 +109,10 @@ export const addEventSchema = z
     path: ["endDate"],
   });
 
-export const updateEventSchema = addEventSchema.partial().extend({
-  isPublished: z.boolean().optional(),
+export const updateEventSchema = createEventSchema.partial().extend({
+  isPublished: z
+    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+    .optional(),
 });
 
 export const blogParamSchema = z.object({
@@ -131,5 +133,34 @@ export const createBlogSchema = z.object({
 });
 
 export const updateBlogSchema = createBlogSchema.partial().extend({
-  isPublished: z.boolean().optional(),
+  isPublished: z
+    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+    .optional(),
+});
+
+export const cohortParamSchema = z.object({
+  cohortId: z.cuid(),
+});
+
+export const createCohortSchema = createEventSchema
+  .omit({
+    eventImages: true,
+    location: true,
+  })
+  .extend({
+    classTime: z
+      .string()
+      .min(5, { message: "Class time must be at least 5 characters long" }),
+    venue: z
+      .string()
+      .min(5, { message: "Venue must be at least 5 characters long" }),
+  });
+
+export const updateCohortSchema = createCohortSchema.partial().extend({
+  isPublished: z
+    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+    .optional(),
+  nftLiveStatus: z
+    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+    .optional(),
 });

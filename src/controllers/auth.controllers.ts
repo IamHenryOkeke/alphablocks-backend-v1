@@ -62,9 +62,7 @@ export const authSendResetPasswordEmail = asyncHandler(
 
 export const authResetPassword = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { token, password } = req.body;
-
-    const result = await authService.resetPassword(token, password);
+    const result = await authService.resetPassword(req.body);
 
     res.status(200).json(result);
   },

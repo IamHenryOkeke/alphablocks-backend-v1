@@ -32,11 +32,11 @@ export const getBlogPostById = asyncHandler(
     const user = req.user as Express.User;
     const { blogId } = req.params;
 
-    const post = await blogService.getBlogPostById(user, blogId);
+    const data = await blogService.getBlogPostById(user, blogId);
 
     res.status(200).json({
       message: "Blog post fetched successfully",
-      post,
+      data,
     });
   },
 );
@@ -46,7 +46,7 @@ export const createBlogPost = asyncHandler(
     const { title, description, thumbnailImage, content } = req.body;
     const user = req.user as Express.User;
 
-    const data = {
+    const createBlogPostData = {
       title,
       slug: generateSlug(title),
       thumbnailImage,
@@ -57,11 +57,11 @@ export const createBlogPost = asyncHandler(
       },
     };
 
-    const newPost = await blogService.createBlogPost(user, data);
+    const data = await blogService.createBlogPost(user, createBlogPostData);
 
     res.status(201).json({
       message: "Blog post created successfully",
-      event: newPost,
+      data,
     });
   },
 );
@@ -73,20 +73,27 @@ export const updateBlogPost = asyncHandler(
     const { title, description, thumbnailImage, content, isPublished } =
       req.body;
 
-    const data = {
+    const updateBlogPostData = {
       ...(title && { title }),
       ...(description && { description }),
-      slug: generateSlug(title),
+      ...(title && { slug: generateSlug(title) }),
       ...(thumbnailImage && { thumbnailImage }),
       ...(content && { content }),
-      ...(isPublished !== undefined && { isPublished }),
+      ...(isPublished && {
+        isPublished: isPublished === "1" ? true : false,
+        publishedAt: isPublished === "1" ? new Date() : null,
+      }),
     };
 
-    const updatedPost = await blogService.updateBlogPost(blogId, user, data);
+    const data = await blogService.updateBlogPost(
+      blogId,
+      user,
+      updateBlogPostData,
+    );
 
     res.status(200).json({
       message: "Blog post updated successfully",
-      product: updatedPost,
+      data,
     });
   },
 );

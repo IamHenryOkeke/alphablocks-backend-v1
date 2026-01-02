@@ -283,7 +283,11 @@ export const sendResetPasswordEmail = async (email: string) => {
   };
 };
 
-export const resetPassword = async (token: string, password: string) => {
+export const resetPassword = async (data: {
+  token: string;
+  password: string;
+}) => {
+  const { token, password } = data;
   const existingToken = await tokenQueries.getToken(
     token,
     TokenType.PASSWORD_RESET,
