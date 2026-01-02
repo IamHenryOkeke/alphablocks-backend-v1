@@ -66,23 +66,23 @@ model Token {
 }
 
 model Event {
-  id          String       @id @default(cuid())
-  title       String
-  slug        String       @unique
-  image       String
-  description String
-  details     String
-  isPublished Boolean      @default(false)
-  publishedAt DateTime?
-  startDate   DateTime
-  endDate     DateTime
-  location    String
-  creatorId   String
-  creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
-  eventImages EventImage[]
+  id             String       @id @default(cuid())
+  title          String
+  slug           String       @unique
+  thumbnailImage String
+  description    String
+  details        String
+  isPublished    Boolean      @default(false)
+  publishedAt    DateTime?
+  startDate      DateTime
+  endDate        DateTime
+  location       String
+  creatorId      String
+  creator        User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  eventImages    EventImage[]
 
   @@index([isPublished, publishedAt])
   @@index([creatorId, createdAt])
