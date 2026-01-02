@@ -46,6 +46,7 @@ model User {
   events            Event[]
   blogPosts         BlogPost[]
   participants      Participant[]
+  cohorts           Cohort[]
 
   @@index([role])
 }
@@ -134,8 +135,14 @@ model Cohort {
   Participants   Participant[]
   cohortTickets  CohortTicket[]
   deletedAt      DateTime?
+  creatorId      String
+  creator        User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([isPublished, publishedAt])
+  @@index([creatorId, createdAt])
+  @@index([deletedAt])
 }
 
 model Participant {
