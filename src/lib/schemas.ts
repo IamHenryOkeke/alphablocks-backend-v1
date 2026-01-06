@@ -164,3 +164,13 @@ export const updateCohortSchema = createCohortSchema.partial().extend({
     .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
     .optional(),
 });
+
+export const registerCohortSchema = z.object({
+  fullName: z
+    .string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name is too long"),
+  email: z.email("Invalid email address"),
+  gender: z.enum(["male", "female", "other"], "Please select your gender"),
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number"),
+});
