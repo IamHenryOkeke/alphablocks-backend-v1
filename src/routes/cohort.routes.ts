@@ -12,9 +12,10 @@ import * as cohortController from "../controllers/cohort.controllers";
 
 const cohortRouter = Router();
 
+cohortRouter.use(optionalAuth);
+
 cohortRouter.get(
   "/all",
-  optionalAuth,
   validate({ query: schemas.querySchema }),
   cohortController.getAllCohorts,
 );
@@ -23,12 +24,20 @@ cohortRouter.get("/latest", optionalAuth, cohortController.getLatestCohort);
 
 cohortRouter.get(
   "/:cohortId",
-  optionalAuth,
   validate({ params: schemas.cohortParamSchema }),
   cohortController.getCohortById,
 );
 
-cohortRouter.use(isAuthenticated, roleAuthorization("ADMIN"));
+cohortRouter.get(
+  "/:cohortId/register",
+  validate({
+    params: schemas.cohortParamSchema,
+    body: schemas.registerCohortSchema,
+  }),
+  cohortController.registerCohort,
+);
+
+cohortRouter.use(isAuthenticated, roleAuthorization(["ADMIN", "SUPERADMIN"]));
 
 cohortRouter.post(
   "/",
