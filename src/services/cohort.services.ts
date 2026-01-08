@@ -1,7 +1,20 @@
 import * as cohortQueries from "../db/cohort.queries";
+import * as ticketQueries from "../db/ticket.queries";
 import { AppError } from "../error/errorHandler";
-import { Prisma } from "../generated/prisma/client";
+import { PaymentStatus, Prisma } from "../generated/prisma/client";
+import prisma from "../lib/prisma";
 import { redis } from "../lib/redis";
+import generateTrxReference from "../utils/ref";
+import fetchWithRetry from "../utils/fetchWithRetry";
+import { createHash, createHmac } from "crypto";
+import { emailQueue } from "../queues/email.queue";
+import { queueConfig } from "../utils/queue-config";
+
+const BASE_URL =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000/"
+    : "https://www.alphablocks.tech/";
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
 
 export const getAllCohorts = async (
   user: Express.User | null,
@@ -117,6 +130,146 @@ export const getCohortById = async (
   return cohort;
 };
 
+export const registerCohort = async (
+  cohortId: string,
+  data: Prisma.UserCreateInput,
+) => {
+  const cohort = await cohortQueries.getCohort({
+    id: cohortId,
+    deletedAt: null,
+  });
+
+  if (!cohort) throw new AppError("Cohort not found", 404);
+
+  const { email, name, phoneNumber, gender } = data;
+
+  const idempotencyKey = createHash("sha256")
+    .update(`${email.trim().toLowerCase()}-${cohortId}`)
+    .digest("hex");
+
+  const existingTicket = await prisma.cohortTicket.findUnique({
+    where: { idempotencyKey },
+  });
+
+  if (existingTicket) {
+    if (existingTicket.status === PaymentStatus.COMPLETED) {
+      throw new AppError("Cohort already paid for", 400);
+    }
+
+    const isExpired =
+      !existingTicket.expiresAt ||
+      existingTicket.expiresAt.getTime() < Date.now();
+
+    if (!isExpired && existingTicket.authorizationUrl) {
+      return {
+        authorizationUrl: existingTicket.authorizationUrl,
+        reference: existingTicket.trxRef,
+        ticketId: existingTicket.id,
+      };
+    }
+  }
+
+  const ticket = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.upsert({
+      where: { email: email.trim().toLowerCase() },
+      update: {
+        name: name.trim(),
+        phoneNumber: (phoneNumber || "").trim(),
+        gender,
+      },
+      create: {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phoneNumber: (phoneNumber || "").trim(),
+        gender,
+      },
+    });
+
+    const participant = await tx.participant.create({
+      data: {
+        cohortId: cohortId,
+        userId: user.id,
+      },
+    });
+
+    const trxRef = generateTrxReference();
+
+    const newCohortTicket = await tx.cohortTicket.create({
+      data: {
+        trxRef: trxRef,
+        amount: "150000",
+        ownerId: participant.id,
+        idempotencyKey,
+        cohortId,
+        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        initializedAt: new Date(Date.now()),
+      },
+      include: {
+        owner: {
+          select: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    return newCohortTicket;
+  });
+
+  if (!ticket) {
+    throw new AppError("Failed to create order", 400);
+  }
+
+  const params = JSON.stringify({
+    email: ticket.owner.user.email,
+    amount: "150000",
+    reference: ticket.trxRef,
+    callback_url: `${BASE_URL}cohort-programmes/${cohortId}/register`,
+    metadata: {
+      cancel_action: `${BASE_URL}cohort-programmes/${cohortId}`,
+      ticketId: ticket.id,
+    },
+    channels: ["card", "bank"],
+  });
+
+  const response = await fetchWithRetry(
+    "https://api.paystack.co/transaction/initialize",
+    {
+      method: "POST",
+      body: params,
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET}`,
+        "Content-Type": "application/json",
+      },
+    },
+    3,
+    1000,
+  );
+
+  const paystackData = await response.json();
+
+  if (!response.ok || !paystackData.data?.authorization_url) {
+    await prisma.cohortTicket.update({
+      where: { id: ticket.id },
+      data: { status: "FAILED" },
+    });
+
+    throw new AppError(
+      paystackData.message || "Failed to initialize Paystack transaction",
+      500,
+    );
+  }
+
+  const { authorization_url, reference: confirmedReference } =
+    paystackData.data;
+
+  return {
+    authorizationUrl: authorization_url,
+    reference: confirmedReference,
+    ticketId: ticket.id,
+  };
+};
+
 export const createCohort = async (data: Prisma.CohortCreateInput) => {
   const { slug } = data;
 
@@ -198,4 +351,51 @@ export const deleteCohort = async (eventId: string) => {
   }
 
   return deletedEvent;
+};
+
+export const webhook = async (data: Buffer, signature: string) => {
+  const computedSignature = createHmac("sha512", PAYSTACK_SECRET)
+    .update(data)
+    .digest("hex");
+
+  if (computedSignature !== signature) {
+    throw new AppError("Invalid Paystack signature", 401);
+  }
+
+  const event = JSON.parse(data.toString("utf-8"));
+
+  if (event.event === "charge.success") {
+    const ticketId = event.data.metadata?.ticketId;
+    if (!ticketId) throw new AppError("Ticket ID missing in metadata", 400);
+
+    try {
+      const data = await ticketQueries.updateCohortTicket(ticketId, {
+        status: PaymentStatus.COMPLETED,
+      });
+
+      await emailQueue.add(
+        "send-payment-confirmation-email",
+        {
+          title: "Payment confirmation",
+          to: data.owner.user.email,
+          name: data.owner.user.name,
+          content: `
+            <div>
+              <p>Hello ${data.owner.user.name || data.owner.user.email},</p>
+              <p>Your ticket with ID ${data.id} has been successfully paid for. Thank you for registering to our cohorts</p>
+            </div>
+          `,
+        },
+        queueConfig,
+      );
+
+      return {
+        statusCode: 200,
+        message: "Payment verified and payment status updated",
+      };
+    } catch (err) {
+      console.error("Error processing Paystack webhook:", err);
+      throw new AppError("Error processing payment", 500);
+    }
+  }
 };

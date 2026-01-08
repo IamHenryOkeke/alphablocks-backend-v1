@@ -41,6 +41,18 @@ export const getCohortById = asyncHandler(
   },
 );
 
+export const registerCohort = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { cohortId } = req.params;
+    const data = await cohortService.registerCohort(cohortId, req.body);
+
+    res.status(200).json({
+      message: "Cohort registered successfully",
+      data,
+    });
+  },
+);
+
 export const createCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const {
@@ -132,6 +144,23 @@ export const deleteCohort = asyncHandler(
 
     res.status(200).json({
       message: "Cohort deleted successfully",
+    });
+  },
+);
+
+export const paystackWebhook = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const signature = req.headers["x-paystack-signature"] as string;
+    const rawBody = req.body as Buffer;
+
+    const result = await cohortService.webhook(rawBody, signature);
+    const { statusCode, message } = result || {
+      statusCode: 500,
+      message: "Webhook processing failed",
+    };
+
+    res.status(statusCode).json({
+      message,
     });
   },
 );

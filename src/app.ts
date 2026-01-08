@@ -14,6 +14,8 @@ const app = express();
 
 app.use(cors(corsOptions));
 
+app.use("/api/webhook", routes.webhookRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
