@@ -147,8 +147,8 @@ export const registerCohort = async (
     .update(`${email.trim().toLowerCase()}-${cohortId}`)
     .digest("hex");
 
-  const existingTicket = await prisma.cohortTicket.findUnique({
-    where: { idempotencyKey },
+  const existingTicket = await ticketQueries.getCohortTicket({
+    idempotencyKey,
   });
 
   if (existingTicket) {
@@ -168,6 +168,10 @@ export const registerCohort = async (
       };
     }
   }
+
+  await ticketQueries.deleteCohortTicket({
+    where: { idempotencyKey },
+  });
 
   const ticket = await prisma.$transaction(async (tx) => {
     const user = await tx.user.upsert({
@@ -217,7 +221,7 @@ export const registerCohort = async (
   });
 
   if (!ticket) {
-    throw new AppError("Failed to create order", 400);
+    throw new AppError("Failed to create ticket", 400);
   }
 
   const params = JSON.stringify({

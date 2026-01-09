@@ -1,5 +1,6 @@
 import { AppError } from "../error/errorHandler";
 import { Prisma } from "../generated/prisma/client";
+import { CohortTicketDeleteArgs } from "../generated/prisma/models";
 import prisma from "../lib/prisma";
 
 type GetCohortTicketsArgs = {
@@ -137,14 +138,9 @@ export async function updateCohortTicket(
   }
 }
 
-export async function deleteParticipant(id: string) {
+export async function deleteCohortTicket(value: CohortTicketDeleteArgs) {
   try {
-    const data = await prisma.participant.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    const data = await prisma.cohortTicket.delete(value);
     return data;
   } catch (error) {
     if (error instanceof Error) {
