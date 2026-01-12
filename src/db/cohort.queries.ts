@@ -2,20 +2,20 @@ import { AppError } from "../error/errorHandler";
 import { Prisma, Role } from "../generated/prisma/client";
 import prisma from "../lib/prisma";
 
-type GetEventsArgs = {
-  where?: Prisma.EventWhereInput;
+type GetCohortsArgs = {
+  where?: Prisma.CohortWhereInput;
   take?: number;
   skip?: number;
-  orderBy?: Prisma.EventOrderByWithRelationInput;
+  orderBy?: Prisma.CohortOrderByWithRelationInput;
 };
 
-export async function getAllEvents(
-  { where, take, skip, orderBy }: GetEventsArgs,
+export async function getAllCohorts(
+  { where, take, skip, orderBy }: GetCohortsArgs,
   role?: Role,
 ) {
   try {
-    const [events, total] = await Promise.all([
-      prisma.event.findMany({
+    const [cohorts, total] = await Promise.all([
+      prisma.cohort.findMany({
         where,
         take,
         skip,
@@ -23,12 +23,15 @@ export async function getAllEvents(
         select: {
           id: true,
           title: true,
+          thumbnailImage: true,
           description: true,
           details: true,
           startDate: true,
           endDate: true,
-          location: true,
+          venue: true,
           publishedAt: true,
+          classTime: true,
+          nftLiveStatus: true,
           ...((role === "ADMIN" || role === "SUPERADMIN") && {
             isPublished: true,
             creatorId: true,
@@ -36,25 +39,20 @@ export async function getAllEvents(
             createdAt: true,
             updatedAt: true,
           }),
-          eventImages: {
-            select: {
-              imageUrl: true,
-            },
-          },
         },
       }),
-      prisma.event.count({ where }),
+      prisma.cohort.count({ where }),
     ]);
 
     return {
-      events,
+      cohorts,
       total,
       totalPage: take ? Math.ceil(total / take) : 1,
       page: skip && take ? Math.ceil(skip / take) + 1 : 1,
     };
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error occurred while finding events:", error.message);
+      console.error("Error occurred while finding cohorts:", error.message);
     } else {
       console.error("Unknown error:", error);
     }
@@ -62,34 +60,32 @@ export async function getAllEvents(
   }
 }
 
-export async function getLatestEvent(
-  values: Prisma.EventFindFirstArgs["where"],
+export async function getLatestCohort(
+  values: Prisma.CohortFindFirstArgs["where"],
   role?: Role,
 ) {
   try {
-    const data = await prisma.event.findFirst({
+    const data = await prisma.cohort.findFirst({
       where: values,
       select: {
         id: true,
         title: true,
+        thumbnailImage: true,
         description: true,
         details: true,
         startDate: true,
         endDate: true,
-        location: true,
+        venue: true,
         publishedAt: true,
+        classTime: true,
+        nftLiveStatus: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
-          creatorId: true,
           isPublished: true,
+          creatorId: true,
           deletedAt: true,
           createdAt: true,
           updatedAt: true,
         }),
-        eventImages: {
-          select: {
-            imageUrl: true,
-          },
-        },
       },
       orderBy: {
         publishedAt: "desc",
@@ -99,7 +95,7 @@ export async function getLatestEvent(
   } catch (error) {
     if (error instanceof Error) {
       console.error(
-        "Error occurred while finding latest event:",
+        "Error occurred while finding latest cohort:",
         error.message,
       );
     } else {
@@ -109,87 +105,84 @@ export async function getLatestEvent(
   }
 }
 
-export async function getEvent(
-  values: Prisma.EventWhereUniqueInput,
+export async function getCohort(
+  values: Prisma.CohortWhereUniqueInput,
   role?: Role,
 ) {
   try {
-    const data = await prisma.event.findUnique({
+    const data = await prisma.cohort.findUnique({
       where: values,
       select: {
         id: true,
         title: true,
+        thumbnailImage: true,
         description: true,
         details: true,
         startDate: true,
         endDate: true,
-        location: true,
+        venue: true,
         publishedAt: true,
+        classTime: true,
+        nftLiveStatus: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
-          slug: true,
-          creatorId: true,
           isPublished: true,
+          creatorId: true,
           deletedAt: true,
           createdAt: true,
           updatedAt: true,
         }),
-        eventImages: {
-          select: {
-            imageUrl: true,
-          },
-        },
       },
     });
     return data;
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error occured while finding event by id", error.message);
+      console.error("Error occured while finding cohort by id", error.message);
     } else {
-      console.error("Error occured while finding event by id", error);
+      console.error("Error occured while finding cohort by id", error);
     }
     throw new AppError("Internal server error", 500);
   }
 }
 
-export async function createEvent(values: Prisma.EventCreateInput) {
+export async function createCohort(values: Prisma.CohortCreateInput) {
   try {
-    const data = await prisma.event.create({
+    const data = await prisma.cohort.create({
       data: values,
-      include: {
-        eventImages: true,
-      },
     });
     return data;
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error creating new event:", error.message);
+      console.error("Error creating new cohort:", error.message);
     } else {
-      console.error("Error creating new event:", error);
+      console.error("Error creating new cohort:", error);
     }
     throw new AppError("Internal server error", 500);
   }
 }
 
-export async function updateEvent(id: string, values: Prisma.EventUpdateInput) {
+export async function updateCohort(
+  id: string,
+  values: Prisma.CohortUpdateInput,
+) {
   try {
-    const data = await prisma.event.update({
+    const data = await prisma.cohort.update({
       where: { id },
       data: values,
     });
     return data;
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error updating event:", error.message);
+      console.error("Error updating cohort:", error.message);
     } else {
-      console.error("Error updating event:", error);
+      console.error("Error updating cohort:", error);
     }
     throw new AppError("Internal server error", 500);
   }
 }
 
-export async function deleteEvent(id: string) {
+export async function deleteCohort(id: string) {
   try {
-    const data = await prisma.event.update({
+    const data = await prisma.cohort.update({
       where: { id },
       data: {
         deletedAt: new Date(),
@@ -198,9 +191,9 @@ export async function deleteEvent(id: string) {
     return data;
   } catch (error) {
     if (error instanceof Error) {
-      console.error("Error deleting event:", error.message);
+      console.error("Error deleting cohort:", error.message);
     } else {
-      console.error("Error deleting event:", error);
+      console.error("Error deleting cohort:", error);
     }
     throw new AppError("Internal server error", 500);
   }

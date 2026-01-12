@@ -12,9 +12,10 @@ import { addFilePathToBody } from "../middlewares/addFilePathToBody.middleware";
 
 const blogRouter = Router();
 
+blogRouter.use(optionalAuth);
+
 blogRouter.get(
   "/all",
-  optionalAuth,
   validate({ query: schemas.querySchema }),
   blogController.getAllBlogPost,
 );
@@ -22,7 +23,6 @@ blogRouter.get("/latest", optionalAuth, blogController.getLatestBlogPost);
 
 blogRouter.get(
   "/:blogId",
-  optionalAuth,
   validate({ params: schemas.blogParamSchema }),
   blogController.getBlogPostById,
 );

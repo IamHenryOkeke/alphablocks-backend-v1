@@ -32,11 +32,11 @@ export const getEventById = asyncHandler(
     const user = req.user as Express.User;
     const { eventId } = req.params;
 
-    const event = await eventService.getEventById(user, eventId);
+    const data = await eventService.getEventById(user, eventId);
 
     res.status(200).json({
       message: "Event fetched successfully",
-      event,
+      data,
     });
   },
 );
@@ -45,7 +45,7 @@ export const createEvent = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const {
       title,
-      image,
+      thumbnailImage,
       eventImages,
       description,
       details,
@@ -55,10 +55,10 @@ export const createEvent = asyncHandler(
     } = req.body;
     const user = req.user as Express.User;
 
-    const data = {
+    const createEventData = {
       title,
       slug: generateSlug(title),
-      image,
+      thumbnailImage,
       ...(eventImages && {
         eventImages: {
           create: eventImages.map((imgUrl: string) => ({ imageUrl: imgUrl })),
@@ -74,11 +74,11 @@ export const createEvent = asyncHandler(
       },
     };
 
-    const newEvent = await eventService.createEvent(data);
+    const data = await eventService.createEvent(createEventData);
 
     res.status(201).json({
       message: "Event created successfully",
-      event: newEvent,
+      data,
     });
   },
 );
@@ -88,7 +88,7 @@ export const updateEvent = asyncHandler(
     const { eventId } = req.params;
     const {
       title,
-      image,
+      thumbnailImage,
       description,
       details,
       startDate,
@@ -97,23 +97,26 @@ export const updateEvent = asyncHandler(
       isPublished,
     } = req.body;
 
-    const data = {
+    const updateEventData = {
       ...(title && { title }),
       ...(description && { description }),
-      slug: generateSlug(title),
-      ...(image && { image }),
+      ...(title && { slug: generateSlug(title) }),
+      ...(thumbnailImage && { thumbnailImage }),
       ...(details && { details }),
       ...(startDate && { startDate }),
       ...(endDate && { endDate }),
       ...(location && { location }),
-      ...(isPublished !== undefined && { isPublished }),
+      ...(isPublished && {
+        isPublished: isPublished === "1" ? true : false,
+        publishedAt: isPublished === "1" ? new Date() : null,
+      }),
     };
 
-    const updatedEvent = await eventService.updateEvent(eventId, data);
+    const data = await eventService.updateEvent(eventId, updateEventData);
 
     res.status(200).json({
       message: "Event updated successfully",
-      product: updatedEvent,
+      data,
     });
   },
 );

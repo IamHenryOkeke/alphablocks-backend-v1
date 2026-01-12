@@ -12,9 +12,10 @@ import * as eventControllers from "../controllers/event.controllers";
 
 const eventRouter = Router();
 
+eventRouter.use(optionalAuth);
+
 eventRouter.get(
   "/all",
-  optionalAuth,
   validate({ query: schemas.querySchema }),
   eventControllers.getAllEvents,
 );
@@ -23,26 +24,31 @@ eventRouter.get("/latest", optionalAuth, eventControllers.getLatestEvent);
 
 eventRouter.get(
   "/:eventId",
-  optionalAuth,
   validate({ params: schemas.eventParamSchema }),
   eventControllers.getEventById,
 );
 
-eventRouter.use(isAuthenticated, roleAuthorization("ADMIN"));
+eventRouter.use(isAuthenticated, roleAuthorization(["ADMIN", "SUPERADMIN"]));
 
 eventRouter.post(
   "/",
-  upload.fields([{ name: "image" }, { name: "eventImages", maxCount: 5 }]),
-  addFilePathToBody("image"),
+  upload.fields([
+    { name: "thumbnailImage" },
+    { name: "eventImages", maxCount: 5 },
+  ]),
+  addFilePathToBody("thumbnailImage"),
   addFilePathToBody("eventImages"),
-  validate({ body: schemas.addEventSchema }),
+  validate({ body: schemas.createEventSchema }),
   eventControllers.createEvent,
 );
 
 eventRouter.put(
   "/:eventId",
-  upload.fields([{ name: "image" }, { name: "eventImages", maxCount: 5 }]),
-  addFilePathToBody("image"),
+  upload.fields([
+    { name: "thumbnailImage" },
+    { name: "eventImages", maxCount: 5 },
+  ]),
+  addFilePathToBody("thumbnailImage"),
   addFilePathToBody("eventImages"),
   validate({
     params: schemas.eventParamSchema,

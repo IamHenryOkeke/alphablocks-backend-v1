@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
 
-export default function generateOrderReference() {
-  return `ORD_${createId()}`;
+export default function generateTrxReference() {
+  return `COHORT_TICKET_${createId()}`;
 }
