@@ -125,6 +125,13 @@ export async function updateCohortTicket(
             },
           },
         },
+        cohort: {
+          select: {
+            title: true,
+            thumbnailImage: true,
+            whatsappGroup: true,
+          },
+        },
       },
     });
     return data;

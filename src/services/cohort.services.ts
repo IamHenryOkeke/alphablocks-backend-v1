@@ -9,6 +9,7 @@ import fetchWithRetry from "../utils/fetchWithRetry";
 import { createHash, createHmac } from "crypto";
 import { emailQueue } from "../queues/email.queue";
 import { queueConfig } from "../utils/queue-config";
+import { successCohortRegistration } from "../email-templates";
 
 const BASE_URL =
   process.env.NODE_ENV === "development"
@@ -377,18 +378,20 @@ export const webhook = async (data: Buffer, signature: string) => {
         status: PaymentStatus.COMPLETED,
       });
 
+      const { owner, cohort } = data;
+
       await emailQueue.add(
         "send-payment-confirmation-email",
         {
           title: "Payment confirmation",
-          to: data.owner.user.email,
-          name: data.owner.user.name,
-          content: `
-            <div>
-              <p>Hello ${data.owner.user.name || data.owner.user.email},</p>
-              <p>Your ticket with ID ${data.id} has been successfully paid for. Thank you for registering to our cohorts</p>
-            </div>
-          `,
+          to: owner.user.email,
+          name: owner.user.name,
+          content: successCohortRegistration(
+            owner.user.name,
+            cohort?.title,
+            cohort?.thumbnailImage,
+            cohort.whatsappGroup,
+          ),
         },
         queueConfig,
       );

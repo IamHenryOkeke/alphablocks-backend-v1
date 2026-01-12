@@ -138,6 +138,7 @@ model Cohort {
   classTime      String
   venue          String
   nftLiveStatus  Boolean        @default(false)
+  whatsappGroup  String
   Participants   Participant[]
   cohortTickets  CohortTicket[]
   deletedAt      DateTime?
@@ -178,8 +179,8 @@ model CohortTicket {
   trxRef           String        @unique
   owner            Participant   @relation(fields: [ownerId], references: [id])
   ownerId          String        @unique
-  cohort           Cohort?       @relation(fields: [cohortId], references: [id])
-  cohortId         String?
+  cohort           Cohort        @relation(fields: [cohortId], references: [id])
+  cohortId         String
   idempotencyKey   String        @unique
   authorizationUrl String?
   initializedAt    DateTime?
