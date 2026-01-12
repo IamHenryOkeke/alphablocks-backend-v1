@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
+import { getEnv } from "../config/env";
 
 export const optionalAuth = async (
   req: Request,
@@ -17,7 +18,7 @@ export const optionalAuth = async (
         return next();
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      const decoded = jwt.verify(token, getEnv("JWT_SECRET")) as {
         id: string;
       };
 

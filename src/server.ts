@@ -1,7 +1,8 @@
 import app from "./app";
+import { getEnv } from "./config/env";
 import { redis } from "./lib/redis";
 
-const PORT = process.env.PORT || 3000;
+const PORT = getEnv("PORT") || 3000;
 
 const startServer = async () => {
   try {

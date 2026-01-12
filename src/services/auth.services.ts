@@ -1,3 +1,4 @@
+import { getEnv } from "../config/env";
 import * as tokenQueries from "../db/token.queries";
 import * as userQueries from "../db/user.queries";
 import { AppError } from "../error/errorHandler";
@@ -7,6 +8,8 @@ import { createToken } from "../utils/crypto";
 import { comparePassword, hashPassword } from "../utils/hash";
 import { signJWT } from "../utils/jwt";
 import { queueConfig } from "../utils/queue-config";
+
+const FRONTEND_URL = getEnv("FRONTEND_URL");
 
 export const signUp = async (data: {
   email: string;
@@ -46,7 +49,7 @@ export const signUp = async (data: {
     type: TokenType.EMAIL_VERIFICATION,
   });
 
-  const verificationLink = `${process.env.FRONTEND_URL}/verify-account?token=${token}`;
+  const verificationLink = `${FRONTEND_URL}/verify-account?token=${token}`;
 
   await emailQueue.add(
     "send-welcome-email",
@@ -105,7 +108,7 @@ export const logIn = async (email: string, password: string) => {
       type: TokenType.EMAIL_VERIFICATION,
     });
 
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-account?token=${token}`;
+    const verificationLink = `${FRONTEND_URL}/verify-account?token=${token}`;
 
     await emailQueue.add(
       "send-verification-email",
@@ -180,7 +183,7 @@ export const sendVerificationEmail = async (email: string) => {
 
   await tokenQueries.createToken(values);
 
-  const verificationLink = `${process.env.FRONTEND_URL}/verify-account?token=${token}`;
+  const verificationLink = `${FRONTEND_URL}/verify-account?token=${token}`;
 
   await emailQueue.add(
     "send-verification-email",
@@ -258,7 +261,7 @@ export const sendResetPasswordEmail = async (email: string) => {
 
   await tokenQueries.createToken(values);
 
-  const verificationLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const verificationLink = `${FRONTEND_URL}/reset-password?token=${token}`;
 
   await emailQueue.add(
     "send-password-reset-email",

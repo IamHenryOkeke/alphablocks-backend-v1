@@ -10,12 +10,13 @@ import { createHash, createHmac } from "crypto";
 import { emailQueue } from "../queues/email.queue";
 import { queueConfig } from "../utils/queue-config";
 import { successCohortRegistration } from "../email-templates";
+import { getEnv } from "../config/env";
 
 const BASE_URL =
-  process.env.NODE_ENV === "development"
+  getEnv("NODE_ENV") === "development"
     ? "http://localhost:3000/"
     : "https://www.alphablocks.tech/";
-const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
+const PAYSTACK_SECRET = getEnv("PAYSTACK_SECRET_KEY")!;
 
 export const getAllCohorts = async (
   user: Express.User | null,

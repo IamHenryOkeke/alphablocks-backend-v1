@@ -3,11 +3,12 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import e from "express";
 import { AppError } from "../error/errorHandler";
+import { getEnv } from "./env";
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: getEnv("CLOUDINARY_CLOUD_NAME"),
+  api_key: getEnv("CLOUDINARY_API_KEY"),
+  api_secret: getEnv("CLOUDINARY_API_SECRET"),
 });
 
 const storage = new CloudinaryStorage({

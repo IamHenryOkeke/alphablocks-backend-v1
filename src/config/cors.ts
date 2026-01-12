@@ -1,6 +1,7 @@
 import { AppError } from "../error/errorHandler";
+import { getEnv } from "./env";
 
-const whitelist = process.env.CORS_WHITELIST?.split(",") || [];
+const whitelist = getEnv("CORS_WHITELIST").split(",") || [];
 
 const corsOptions = {
   origin: function (

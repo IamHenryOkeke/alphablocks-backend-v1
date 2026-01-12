@@ -12,13 +12,14 @@ import {
   getUserByGoogleId,
   updateUser,
 } from "../db/user.queries";
+import { getEnv } from "./env";
 interface JwtPayload {
   id: string;
 }
 
 const opts: StrategyOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: process.env.JWT_SECRET as string,
+  secretOrKey: getEnv("JWT_SECRET"),
 };
 
 passport.use(
@@ -49,8 +50,8 @@ passport.use(
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientID: getEnv("GOOGLE_CLIENT_ID"),
+      clientSecret: getEnv("GOOGLE_CLIENT_SECRET"),
       callbackURL: "http://localhost:5000/api/auth/google/callback",
     },
     async function (accessToken, refreshToken, profile, done) {

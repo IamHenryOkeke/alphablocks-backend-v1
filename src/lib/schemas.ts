@@ -151,6 +151,7 @@ export const createCohortSchema = createEventSchema
     classTime: z
       .string()
       .min(5, { message: "Class time must be at least 5 characters long" }),
+    whatsappGroup: z.url({ message: "Must be a valid url" }),
     venue: z
       .string()
       .min(5, { message: "Venue must be at least 5 characters long" }),

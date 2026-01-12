@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { AppError } from "../error/errorHandler";
+import { getEnv } from "../config/env";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -7,8 +8,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: process.env.SMTP_USER!,
-    pass: process.env.SMTP_PASS!,
+    user: getEnv("SMTP_USER"),
+    pass: getEnv("SMTP_PASS"),
   },
 });
 
@@ -20,7 +21,7 @@ export const sendMail = async (
 ) => {
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: getEnv("SMTP_USER"),
       to,
       subject,
       html: message,
