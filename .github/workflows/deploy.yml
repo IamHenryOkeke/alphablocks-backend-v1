@@ -20,4 +20,6 @@ jobs:
             cd /Home/alphablocks-backend-v1
             git pull origin main
             yarn install
-            pm2 reload backend
+            pm2 reload alphablocks-backend-api
+            pm2 reload alphablocks-email-worker
+
