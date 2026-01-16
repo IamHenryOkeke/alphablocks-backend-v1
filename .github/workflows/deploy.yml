@@ -28,7 +28,7 @@ jobs:
               # Now we have got the access of EC2 and we will start the deploy .
               cd ~/Home/alphablocks-backend-v1 &&
               git pull origin main &&
-              yarn install --frozen-lockfile &&
+              yarn install &&
               yarn build &&
               pm2 reload alphablocks-backend-api &&
               pm2 reload alphablocks-email-worker &&
