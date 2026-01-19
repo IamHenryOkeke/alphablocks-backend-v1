@@ -12,5 +12,5 @@ new Worker(
 
     await sendMail(title, (name || to) as string, to, content);
   },
-  { connection: redis },
+  { connection: redis.options },
 );

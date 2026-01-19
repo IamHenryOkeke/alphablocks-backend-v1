@@ -77,39 +77,42 @@ export const eventParamSchema = z.object({
   eventId: z.cuid(),
 });
 
-export const createEventSchema = z
-  .object({
-    title: z
-      .string()
-      .min(5, { message: "Title must be at least 5 characters long" }),
-    thumbnailImage: z.url({ message: "Must be a valid url" }),
-    eventImages: z
-      .array(z.url({ message: "Each event image must be a valid url" }))
-      .optional(),
-    description: z
-      .string()
-      .min(10, { message: "Description must be at least 10 characters long" }),
-    details: z
-      .string()
-      .min(20, { message: "Content must be at least 20 characters long" }),
-    startDate: z.iso
-      .datetime({ message: "Start date must be a valid ISO-8601 datetime" })
-      .refine((date) => new Date(date) > new Date(), {
-        message: "Start date must be in the future",
-      }),
-    location: z
-      .string()
-      .min(5, { message: "Location must be at least 5 characters long" }),
-    endDate: z.iso.datetime({
-      message: "End date must be a valid ISO-8601 datetime",
+const createEventBaseSchema = z.object({
+  title: z
+    .string()
+    .min(5, { message: "Title must be at least 5 characters long" }),
+  thumbnailImage: z.url({ message: "Must be a valid url" }),
+  eventImages: z
+    .array(z.url({ message: "Each event image must be a valid url" }))
+    .optional(),
+  description: z
+    .string()
+    .min(10, { message: "Description must be at least 10 characters long" }),
+  details: z
+    .string()
+    .min(20, { message: "Content must be at least 20 characters long" }),
+  startDate: z.iso
+    .datetime({ message: "Start date must be a valid ISO-8601 datetime" })
+    .refine((date) => new Date(date) > new Date(), {
+      message: "Start date must be in the future",
     }),
-  })
-  .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
+  location: z
+    .string()
+    .min(5, { message: "Location must be at least 5 characters long" }),
+  endDate: z.iso.datetime({
+    message: "End date must be a valid ISO-8601 datetime",
+  }),
+});
+
+export const createEventSchema = createEventBaseSchema.refine(
+  (data) => new Date(data.endDate) > new Date(data.startDate),
+  {
     message: "End date must be after start date",
     path: ["endDate"],
-  });
+  },
+);
 
-export const updateEventSchema = createEventSchema.partial().extend({
+export const updateEventSchema = createEventBaseSchema.partial().extend({
   isPublished: z
     .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
     .optional(),
@@ -142,7 +145,7 @@ export const cohortParamSchema = z.object({
   cohortId: z.cuid(),
 });
 
-export const createCohortSchema = createEventSchema
+const createCohortBaseSchema = createEventBaseSchema
   .omit({
     eventImages: true,
     location: true,
@@ -157,7 +160,15 @@ export const createCohortSchema = createEventSchema
       .min(5, { message: "Venue must be at least 5 characters long" }),
   });
 
-export const updateCohortSchema = createCohortSchema.partial().extend({
+export const createCohortSchema = createCohortBaseSchema.refine(
+  (data) => new Date(data.endDate) > new Date(data.startDate),
+  {
+    message: "End date must be after start date",
+    path: ["endDate"],
+  },
+);
+
+export const updateCohortSchema = createCohortBaseSchema.partial().extend({
   isPublished: z
     .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
     .optional(),

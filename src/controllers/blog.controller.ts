@@ -32,7 +32,7 @@ export const getBlogPostById = asyncHandler(
     const user = req.user as Express.User;
     const { blogId } = req.params;
 
-    const data = await blogService.getBlogPostById(user, blogId);
+    const data = await blogService.getBlogPostById(user, blogId as string);
 
     res.status(200).json({
       message: "Blog post fetched successfully",
@@ -86,7 +86,7 @@ export const updateBlogPost = asyncHandler(
     };
 
     const data = await blogService.updateBlogPost(
-      blogId,
+      blogId as string,
       user,
       updateBlogPostData,
     );
@@ -102,7 +102,7 @@ export const deleteBlogPost = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { blogId } = req.params;
 
-    await blogService.deleteBlogPost(blogId);
+    await blogService.deleteBlogPost(blogId as string);
 
     res.status(200).json({
       message: "Blog post deleted successfully",

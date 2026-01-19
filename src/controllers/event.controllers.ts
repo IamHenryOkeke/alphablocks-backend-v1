@@ -32,7 +32,7 @@ export const getEventById = asyncHandler(
     const user = req.user as Express.User;
     const { eventId } = req.params;
 
-    const data = await eventService.getEventById(user, eventId);
+    const data = await eventService.getEventById(user, eventId as string);
 
     res.status(200).json({
       message: "Event fetched successfully",
@@ -112,7 +112,10 @@ export const updateEvent = asyncHandler(
       }),
     };
 
-    const data = await eventService.updateEvent(eventId, updateEventData);
+    const data = await eventService.updateEvent(
+      eventId as string,
+      updateEventData,
+    );
 
     res.status(200).json({
       message: "Event updated successfully",
@@ -125,7 +128,7 @@ export const deleteEvent = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { eventId } = req.params;
 
-    await eventService.deleteEvent(eventId);
+    await eventService.deleteEvent(eventId as string);
 
     res.status(200).json({
       message: "Event deleted successfully",

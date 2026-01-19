@@ -32,7 +32,7 @@ export const getCohortById = asyncHandler(
     const user = req.user as Express.User;
     const { cohortId } = req.params;
 
-    const data = await cohortService.getCohortById(user, cohortId);
+    const data = await cohortService.getCohortById(user, cohortId as string);
 
     res.status(200).json({
       message: "Cohort fetched successfully",
@@ -44,7 +44,10 @@ export const getCohortById = asyncHandler(
 export const registerCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { cohortId } = req.params;
-    const data = await cohortService.registerCohort(cohortId, req.body);
+    const data = await cohortService.registerCohort(
+      cohortId as string,
+      req.body,
+    );
 
     res.status(200).json({
       message: "Cohort registered successfully",
@@ -129,7 +132,10 @@ export const updateCohort = asyncHandler(
       }),
     };
 
-    const data = await cohortService.updateCohort(cohortId, updateCohortData);
+    const data = await cohortService.updateCohort(
+      cohortId as string,
+      updateCohortData,
+    );
 
     res.status(200).json({
       message: "Cohort updated successfully",
@@ -142,7 +148,7 @@ export const deleteCohort = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { cohortId } = req.params;
 
-    await cohortService.deleteCohort(cohortId);
+    await cohortService.deleteCohort(cohortId as string);
 
     res.status(200).json({
       message: "Cohort deleted successfully",
