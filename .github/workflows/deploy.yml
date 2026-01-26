@@ -30,8 +30,8 @@ jobs:
               git pull origin main &&
               yarn install &&
               yarn build &&
-              pm2 reload alphablocks-backend-api &&
-              pm2 reload alphablocks-email-worker &&
+              pm2 reload alphablocks-backend-api --update-env &&
+              pm2 reload alphablocks-email-worker --update-env &&
               pm2 status &&
               pm2 save 
               '
