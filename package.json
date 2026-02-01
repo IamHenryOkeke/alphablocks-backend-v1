@@ -10,6 +10,8 @@
     "build": "prisma generate && tsc",
     "deploy:migrate": "prisma migrate deploy",
     "start": "node dist/server.js",
+    "worker:email:prod": "node dist/workers/email.worker.js",
+    "start:prod": "npm run deploy:migrate && concurrently \"npm run start\" \"npm run worker:email:prod\"",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -33,7 +35,6 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/passport-jwt": "^4.0.1",
-    "concurrently": "^9.2.1",
     "eslint": "^9.27.0",
     "globals": "^16.2.0",
     "husky": "^9.1.7",
@@ -52,6 +53,7 @@
     "argon2": "^0.44.0",
     "bullmq": "^5.66.2",
     "cloudinary": "^2.8.0",
+    "concurrently": "^9.2.1",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
