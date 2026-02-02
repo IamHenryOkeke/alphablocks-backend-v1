@@ -53,8 +53,30 @@ model User {
   blogPosts         BlogPost[]
   participants      Participant[]
   cohorts           Cohort[]
+  teamMember        TeamMember?
 
   @@index([role])
+}
+
+enum TeamCategory {
+  FOUNDER
+  DESIGN_AND_PRODUCT
+  COMMUNITY_MANAGEMENT
+  ENGINEERING
+  CONTENT_CREATION
+  OTHERS
+}
+
+model TeamMember {
+  id          String       @id @default(cuid())
+  title       String
+  category    TeamCategory
+  twitterUrl  String
+  linkedinUrl String
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 enum TokenType {
@@ -80,8 +102,8 @@ model Event {
   details        String
   isPublished    Boolean      @default(false)
   publishedAt    DateTime?
-  startDate      DateTime
-  endDate        DateTime
+  startDate      DateTime?
+  endDate        DateTime?
   location       String
   creatorId      String
   creator        User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
