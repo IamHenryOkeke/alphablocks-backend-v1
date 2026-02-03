@@ -38,9 +38,7 @@ export const getAllCohorts = async (
   const cacheKey = `cohorts:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
-  }
+  if (cached) return JSON.parse(cached);
 
   const where: Prisma.CohortWhereInput = {
     deletedAt: null,
@@ -154,21 +152,19 @@ export const registerCohort = async (
   });
 
   if (existingTicket) {
-    if (existingTicket.status === PaymentStatus.COMPLETED) {
+    if (existingTicket.status === PaymentStatus.COMPLETED)
       throw new AppError("Cohort already paid for", 400);
-    }
 
     const isExpired =
       !existingTicket.expiresAt ||
       existingTicket.expiresAt.getTime() < Date.now();
 
-    if (!isExpired && existingTicket.authorizationUrl) {
+    if (!isExpired && existingTicket.authorizationUrl)
       return {
         authorizationUrl: existingTicket.authorizationUrl,
         reference: existingTicket.trxRef,
         ticketId: existingTicket.id,
       };
-    }
   }
 
   await ticketQueries.deleteCohortTicket({
@@ -222,9 +218,7 @@ export const registerCohort = async (
     return newCohortTicket;
   });
 
-  if (!ticket) {
-    throw new AppError("Failed to create ticket", 400);
-  }
+  if (!ticket) throw new AppError("Failed to create ticket", 400);
 
   const params = JSON.stringify({
     email: ticket.owner.user.email,
@@ -281,27 +275,22 @@ export const createCohort = async (data: Prisma.CohortCreateInput) => {
 
   const existingCohort = await cohortQueries.getCohort({ slug });
 
-  if (existingCohort) {
+  if (existingCohort)
     throw new AppError(`Cohort with this name already exists`, 400);
-  }
 
   const newCohort = await cohortQueries.createCohort(data);
 
-  if (!newCohort) {
-    throw new AppError("Failed to create event", 400);
-  }
+  if (!newCohort) throw new AppError("Failed to create event", 400);
 
   const keys = await redis.keys("cohort:all:*");
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   return newCohort;
 };
 
 export const updateCohort = async (
   cohortId: string,
-  data: Prisma.EventUpdateInput,
+  data: Prisma.CohortUpdateInput,
 ) => {
   const existingCohort = await cohortQueries.getCohort({
     id: cohortId,
@@ -323,14 +312,10 @@ export const updateCohort = async (
   const updatedCohort = await cohortQueries.updateCohort(cohortId, data);
 
   const keys = await redis.keys(`cohorts:id:${cohortId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("cohorts:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return updatedCohort;
 };
@@ -340,21 +325,15 @@ export const deleteCohort = async (eventId: string) => {
     id: eventId,
   });
 
-  if (!existingEvent) {
-    throw new AppError("Event not found", 404);
-  }
+  if (!existingEvent) throw new AppError("Event not found", 404);
 
   const deletedEvent = await cohortQueries.deleteCohort(eventId);
 
   const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return deletedEvent;
 };
@@ -364,9 +343,8 @@ export const webhook = async (data: Buffer, signature: string) => {
     .update(data)
     .digest("hex");
 
-  if (computedSignature !== signature) {
+  if (computedSignature !== signature)
     throw new AppError("Invalid Paystack signature", 401);
-  }
 
   const event = JSON.parse(data.toString("utf-8"));
 
@@ -391,7 +369,7 @@ export const webhook = async (data: Buffer, signature: string) => {
             owner.user.name,
             cohort?.title,
             cohort?.thumbnailImage,
-            cohort.whatsappGroup,
+            cohort.whatsappGroupUrl,
           ),
         },
         queueConfig,

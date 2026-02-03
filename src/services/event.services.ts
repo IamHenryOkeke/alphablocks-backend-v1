@@ -23,9 +23,7 @@ export const getAllEvents = async (
   const cacheKey = `events:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
-  }
+  if (cached) return JSON.parse(cached);
 
   const where: Prisma.EventWhereInput = {
     deletedAt: null,
@@ -122,15 +120,12 @@ export const createEvent = async (eventData: Prisma.EventCreateInput) => {
 
   const existingEvent = await eventQueries.getEvent({ slug });
 
-  if (existingEvent) {
+  if (existingEvent)
     throw new AppError(`Event with this name already exists`, 400);
-  }
 
   const newEvent = await eventQueries.createEvent(eventData);
 
-  if (!newEvent) {
-    throw new AppError("Failed to create event", 400);
-  }
+  if (!newEvent) throw new AppError("Failed to create event", 400);
 
   const keys = await redis.keys("events:all:*");
   if (keys.length) {
@@ -164,14 +159,10 @@ export const updateEvent = async (
   const updatedEvent = await eventQueries.updateEvent(eventId, data);
 
   const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return updatedEvent;
 };
@@ -181,21 +172,15 @@ export const deleteEvent = async (eventId: string) => {
     id: eventId,
   });
 
-  if (!existingEvent) {
-    throw new AppError("Event not found", 404);
-  }
+  if (!existingEvent) throw new AppError("Event not found", 404);
 
   const deletedEvent = await eventQueries.deleteEvent(eventId);
 
   const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return deletedEvent;
 };

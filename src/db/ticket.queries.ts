@@ -129,7 +129,7 @@ export async function updateCohortTicket(
           select: {
             title: true,
             thumbnailImage: true,
-            whatsappGroup: true,
+            whatsappGroupUrl: true,
           },
         },
       },

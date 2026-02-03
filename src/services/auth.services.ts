@@ -20,9 +20,8 @@ export const signUp = async (data: {
 
   const existingUserByEmail = await userQueries.getUserByEmail(normalizedEmail);
 
-  if (existingUserByEmail) {
+  if (existingUserByEmail)
     throw new AppError("Email already used. Please use another email.", 409);
-  }
 
   const hashedPassword = await hashPassword(data.password);
 
@@ -81,14 +80,13 @@ export const signUp = async (data: {
 export const logIn = async (email: string, password: string) => {
   const isExistingUser = await userQueries.getUserByEmail(email.toLowerCase());
 
-  if (!isExistingUser || isExistingUser.deletedAt) {
+  if (!isExistingUser || isExistingUser.deletedAt)
     throw new AppError("invalid credentials", 401);
-  }
 
   if (!isExistingUser.password) {
-    if (isExistingUser.googleId) {
+    if (isExistingUser.googleId)
       throw new AppError("Please login with Google.", 400);
-    }
+
     throw new AppError("Invalid credentials", 401);
   }
 
@@ -134,9 +132,7 @@ export const logIn = async (email: string, password: string) => {
     password.trim(),
   );
 
-  if (!isValidPassword) {
-    throw new AppError("invalid credentials", 401);
-  }
+  if (!isValidPassword) throw new AppError("invalid credentials", 401);
 
   const user = {
     id: isExistingUser.id,
@@ -158,13 +154,11 @@ export const sendVerificationEmail = async (email: string) => {
 
   const existingUser = await userQueries.getUserByEmail(normalizedEmail);
 
-  if (!existingUser || existingUser.deletedAt) {
+  if (!existingUser || existingUser.deletedAt)
     throw new AppError("Invalid credentials.", 401);
-  }
 
-  if (existingUser.isVerified) {
+  if (existingUser.isVerified)
     throw new AppError("Account verified already", 409);
-  }
 
   await tokenQueries.deleteToken(existingUser.id);
 
@@ -214,19 +208,14 @@ export const verifyEmail = async (token: string) => {
     TokenType.EMAIL_VERIFICATION,
   );
 
-  if (!existingToken) {
+  if (!existingToken)
     throw new AppError("Reset token is invalid or has expired.", 400);
-  }
 
   const user = await userQueries.getUserById(existingToken.userId);
 
-  if (!user || user.deletedAt) {
-    throw new AppError("User not found", 404);
-  }
+  if (!user || user.deletedAt) throw new AppError("User not found", 404);
 
-  if (user.isVerified) {
-    return { message: "Account is already verified." };
-  }
+  if (user.isVerified) return { message: "Account is already verified." };
 
   const values = { isVerified: true };
 
@@ -240,9 +229,8 @@ export const sendResetPasswordEmail = async (email: string) => {
 
   const existingUserByEmail = await userQueries.getUserByEmail(normalizedEmail);
 
-  if (!existingUserByEmail || existingUserByEmail.deletedAt) {
+  if (!existingUserByEmail || existingUserByEmail.deletedAt)
     throw new AppError("Invalid credentials.", 409);
-  }
 
   await tokenQueries.deleteToken(existingUserByEmail.id);
 
@@ -296,15 +284,12 @@ export const resetPassword = async (data: {
     TokenType.PASSWORD_RESET,
   );
 
-  if (!existingToken) {
+  if (!existingToken)
     throw new AppError("Reset token is invalid or has expired.", 400);
-  }
 
   const user = await userQueries.getUserById(existingToken.userId);
 
-  if (!user || user.deletedAt) {
-    throw new AppError("User not found", 404);
-  }
+  if (!user || user.deletedAt) throw new AppError("User not found", 404);
 
   const hashedPassword = await hashPassword(password);
 

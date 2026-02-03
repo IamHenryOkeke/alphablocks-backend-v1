@@ -24,9 +24,7 @@ export const getAllBlogPosts = async (
   const cacheKey = `blogs:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
-  }
+  if (cached) return JSON.parse(cached);
 
   const where: Prisma.BlogPostWhereInput = {
     deletedAt: null,
@@ -138,20 +136,15 @@ export const createBlogPost = async (
     user?.role ?? "USER",
   );
 
-  if (existingPost) {
+  if (existingPost)
     throw new AppError("Blog post with this name already exists", 400);
-  }
 
   const newPost = await blogQueries.createBlogPost(blogPostData);
 
-  if (!newPost) {
-    throw new AppError("Failed to create blog post", 400);
-  }
+  if (!newPost) throw new AppError("Failed to create blog post", 400);
 
   const keys = await redis.keys("blogs:all:*");
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   return newPost;
 };
@@ -182,14 +175,10 @@ export const updateBlogPost = async (
   const updatedPost = await blogQueries.updateBlogPost(blogId, data);
 
   const keys = await redis.keys(`blogs:id:${blogId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("blogs:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return updatedPost;
 };
@@ -197,21 +186,15 @@ export const updateBlogPost = async (
 export const deleteBlogPost = async (blogId: string) => {
   const existingPost = await blogQueries.getBlogPost({ id: blogId });
 
-  if (!existingPost) {
-    throw new AppError("Blog post not found", 404);
-  }
+  if (!existingPost) throw new AppError("Blog post not found", 404);
 
   const post = await blogQueries.deleteBlogPost(blogId);
 
   const keys = await redis.keys(`blogs:id:${blogId}:*`);
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  if (keys.length) await redis.del(keys);
 
   const allKeys = await redis.keys("blogs:all:*");
-  if (allKeys.length) {
-    await redis.del(allKeys);
-  }
+  if (allKeys.length) await redis.del(allKeys);
 
   return post;
 };

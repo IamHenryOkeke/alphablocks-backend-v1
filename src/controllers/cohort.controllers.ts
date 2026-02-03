@@ -67,7 +67,7 @@ export const createCohort = asyncHandler(
       endDate,
       venue,
       classTime,
-      whatsappGroup,
+      whatsappGroupUrl,
     } = req.body;
 
     const user = req.user as Express.User;
@@ -82,7 +82,7 @@ export const createCohort = asyncHandler(
       endDate,
       venue,
       classTime,
-      whatsappGroup,
+      whatsappGroupUrl,
       creator: {
         connect: { id: user.id },
       },
