@@ -7,12 +7,12 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "worker:email": "ts-node src/workers/email.worker.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm run worker:email\"",
-    "build": "prisma generate && tsc",
+    "build": "tsc",
     "deploy:migrate": "prisma migrate deploy",
     "start": "node dist/server.js",
     "worker:email:prod": "node dist/workers/email.worker.js",
     "start:prod": "npm run deploy:migrate && concurrently \"npm run start\" \"npm run worker:email:prod\"",
-    "prepare": "husky install || true"
+    "prepare": "husky install"
   },
   "lint-staged": {
     "**/*.ts": [
