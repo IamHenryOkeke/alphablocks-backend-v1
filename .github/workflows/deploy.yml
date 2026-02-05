@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: self-hosted
     env:
-      NODE_ENV: production
+      NODE_ENV: 'production'
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       PORT: ${{ secrets.PORT }}
