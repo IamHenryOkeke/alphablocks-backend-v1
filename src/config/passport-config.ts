@@ -5,42 +5,35 @@ import {
   StrategyOptions,
 } from "passport-jwt";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import prisma from "../lib/prisma";
 import {
   createUser,
   getUserByEmail,
   getUserByGoogleId,
   updateUser,
+  getUserById,
 } from "../db/user.queries";
 import { getEnv } from "./env";
-interface JwtPayload {
-  id: string;
-}
+import { JwtPayload } from "../types/auth";
+import { User } from "../generated/prisma/client";
 
 const opts: StrategyOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: getEnv("JWT_SECRET"),
 };
 
+const toUserData = (user: User) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+});
+
 passport.use(
   new JwtStrategy(opts, async (jwt_payload: JwtPayload, done) => {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: jwt_payload.id },
-      });
-
-      const data = {
-        id: user?.id,
-        name: user?.name,
-        email: user?.email,
-        image: user?.image,
-        role: user?.role,
-        createdAt: user?.createdAt,
-        updatedAt: user?.updatedAt,
-      };
-
-      if (user) return done(null, data);
-      return done(null, false);
+      const user = await getUserById(jwt_payload.id);
+      if (!user) return done(null, false);
+      return done(null, toUserData(user));
     } catch (error) {
       return done(error, false);
     }
@@ -60,22 +53,23 @@ passport.use(
         const email = profile.emails?.[0].value || "";
         const name = profile.displayName;
         const image = profile.photos?.[0].value;
+        const isVerified = profile.emails?.[0].verified === true;
 
         const existingUserByGoogleId = await getUserByGoogleId(googleId);
-        if (existingUserByGoogleId) return done(null, existingUserByGoogleId);
+        if (existingUserByGoogleId)
+          return done(null, toUserData(existingUserByGoogleId));
 
-        const existingUserByEmail = await getUserByEmail(
-          email.toLowerCase() || "",
-        );
+        const existingUserByEmail = await getUserByEmail(email.toLowerCase());
+
         if (existingUserByEmail) {
           const values = {
             googleId,
             ...(!existingUserByEmail.image && { image }),
             ...(!existingUserByEmail.name && { name }),
-            isVerified: true,
+            isVerified,
           };
           const updatedUser = await updateUser(existingUserByEmail.id, values);
-          return done(null, updatedUser);
+          return done(null, toUserData(updatedUser));
         }
 
         const values = {
@@ -83,10 +77,11 @@ passport.use(
           email,
           name,
           image,
+          isVerified,
         };
 
         const newUser = await createUser(values);
-        return done(null, newUser);
+        return done(null, toUserData(newUser));
       } catch (err) {
         console.error("Google OAuth error:", err);
         done(err);

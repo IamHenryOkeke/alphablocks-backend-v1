@@ -5,7 +5,4 @@ export interface JwtPayload {
   name: string;
   email: string;
   role: Role;
-  image: string | null;
-  createdAt: Date;
-  updatedAt: Date;
 }

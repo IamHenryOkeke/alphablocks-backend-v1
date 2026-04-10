@@ -97,6 +97,7 @@ export async function getUserByGoogleId(googleId: string) {
     const data = await prisma.user.findUnique({
       where: {
         googleId,
+        deletedAt: null,
       },
     });
     return data;
