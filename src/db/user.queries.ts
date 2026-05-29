@@ -77,31 +77,31 @@ export async function getUserByEmail(
   }
 }
 
-export async function getUserByGoogleId(
-  email: string,
-  tx: PrismaTransactionClient = prisma,
-) {
-  try {
-    const data = await tx.user.findUnique({
-      where: {
-        googleId,
-        deletedAt: null,
-      },
-      include: {
-        teamMember: true,
-      },
-    });
+// export async function getUserByGoogleId(
+//   email: string,
+//   tx: PrismaTransactionClient = prisma,
+// ) {
+//   try {
+//     const data = await tx.user.findUnique({
+//       where: {
+//         googleId,
+//         deletedAt: null,
+//       },
+//       include: {
+//         teamMember: true,
+//       },
+//     });
 
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error("Error occured while finding user by email", error.message);
-    } else {
-      console.error("Error occured while finding user by email", error);
-    }
-    throw new AppError("Internal server error", 500);
-  }
-}
+//     return data;
+//   } catch (error) {
+//     if (error instanceof Error) {
+//       console.error("Error occured while finding user by email", error.message);
+//     } else {
+//       console.error("Error occured while finding user by email", error);
+//     }
+//     throw new AppError("Internal server error", 500);
+//   }
+// }
 
 export async function getUserById(
   id: string,
