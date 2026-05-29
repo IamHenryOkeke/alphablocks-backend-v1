@@ -2,6 +2,31 @@ import * as eventQueries from "../db/event.queries";
 import { AppError } from "../error/errorHandler";
 import { Prisma } from "../generated/prisma/client";
 import { redis } from "../lib/redis";
+import {
+  buildResourceCacheTargets,
+  invalidateCache,
+} from "../utils/redis-cache";
+import {
+  buildDateWhere,
+  buildPublicationWhere,
+  DateFilter,
+  PublicationFilter,
+} from "./cohort.services";
+
+export const getEventStats = async () => {
+  const cacheKey = `events:stats`;
+
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const stats = await eventQueries.getEventStats();
+
+  await redis.set(cacheKey, JSON.stringify(stats), {
+    EX: 60 * 5,
+  });
+
+  return stats;
+};
 
 export const getAllEvents = async (
   user: Express.User | null,
@@ -9,15 +34,19 @@ export const getAllEvents = async (
     searchTerm: string;
     page: number;
     limit: number;
+    publication: PublicationFilter;
+    dateFilter: DateFilter;
   },
 ) => {
-  const { searchTerm, page, limit } = queryParams;
+  const { searchTerm, page, limit, publication, dateFilter } = queryParams;
 
   const cachePayload = {
     role: user?.role ?? "USER",
     searchTerm: searchTerm?.trim().toLowerCase() ?? null,
-    page: page,
-    limit: limit,
+    page,
+    limit,
+    publication,
+    dateFilter,
   };
 
   const cacheKey = `events:all:${JSON.stringify(cachePayload)}`;
@@ -33,16 +62,11 @@ export const getAllEvents = async (
         mode: "insensitive",
       },
     }),
-    ...(user?.role !== "ADMIN" &&
-      user?.role !== "SUPERADMIN" && {
-        isPublished: true,
-      }),
+    ...buildPublicationWhere(user, publication),
+    ...buildDateWhere(dateFilter),
   };
 
-  const orderBy =
-    user?.role === "ADMIN" || user?.role === "SUPERADMIN"
-      ? { createdAt: "desc" as const }
-      : { publishedAt: "desc" as const };
+  const orderBy = { publishedAt: "desc" as const };
 
   const events = await eventQueries.getAllEvents(
     {
@@ -75,7 +99,7 @@ export const getLatestEvent = async (user: Express.User | null) => {
       }),
   };
 
-  const event = await eventQueries.getLatestEvent(values, user?.role);
+  const event = await eventQueries.getLatestEvent(values);
 
   if (!event) throw new AppError("Latest Event not found", 404);
 
@@ -127,10 +151,7 @@ export const createEvent = async (eventData: Prisma.EventCreateInput) => {
 
   if (!newEvent) throw new AppError("Failed to create event", 400);
 
-  const keys = await redis.keys("events:all:*");
-  if (keys.length) {
-    await redis.del(keys);
-  }
+  await invalidateCache(buildResourceCacheTargets("events"));
 
   return newEvent;
 };
@@ -158,11 +179,7 @@ export const updateEvent = async (
 
   const updatedEvent = await eventQueries.updateEvent(eventId, data);
 
-  const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) await redis.del(keys);
-
-  const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) await redis.del(allKeys);
+  await invalidateCache(buildResourceCacheTargets("events", eventId));
 
   return updatedEvent;
 };
@@ -176,11 +193,7 @@ export const deleteEvent = async (eventId: string) => {
 
   const deletedEvent = await eventQueries.deleteEvent(eventId);
 
-  const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) await redis.del(keys);
-
-  const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) await redis.del(allKeys);
+  await invalidateCache(buildResourceCacheTargets("events", eventId));
 
   return deletedEvent;
 };

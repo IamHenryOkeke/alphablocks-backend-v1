@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TokenType" ADD VALUE 'INVITE_TEAM_MEMBER';

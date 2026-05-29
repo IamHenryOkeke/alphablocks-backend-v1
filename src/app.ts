@@ -24,6 +24,7 @@ app.use(passport.initialize());
 app.use("/api/auth", routes.authRouter);
 app.use("/api/users", routes.userRouter);
 app.use("/api/team-members", routes.teamMemberRouter);
+app.use("/api/overview", routes.overviewRouter);
 app.use("/api/events", routes.eventRouter);
 app.use("/api/blogs", routes.blogRouter);
 app.use("/api/cohorts", routes.cohortRouter);

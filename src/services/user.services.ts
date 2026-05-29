@@ -1,7 +1,12 @@
 import * as userQueries from "../db/user.queries";
+import { getStartedEmail } from "../email-templates";
 import { AppError } from "../error/errorHandler";
 import { Prisma } from "../generated/prisma/client";
 import { redis } from "../lib/redis";
+import { getStartedSchema } from "../lib/schemas";
+import { emailQueue } from "../queues/email.queue";
+import { queueConfig } from "../utils/queue-config";
+import z from "zod";
 
 export const getAllUsers = async (queryParams: {
   searchTerm: string;
@@ -65,4 +70,28 @@ export const getUserById = async (userId: string) => {
   });
 
   return user;
+};
+
+export const getStarted = async (data: z.infer<typeof getStartedSchema>) => {
+  const { isSubscribed, ...rest } = data;
+  const existingUserByEmail = await userQueries.getUserByEmail(data.email);
+
+  if (existingUserByEmail) throw new AppError("Email is in use already", 400);
+
+  const newUser = await userQueries.createUser({
+    ...rest,
+    isSubscribed: isSubscribed === "YES" ? true : false,
+  });
+
+  await emailQueue.add(
+    "send-get-started-email",
+    {
+      subject: "Welcome to Alphablocks",
+      to: newUser.email,
+      content: getStartedEmail(newUser.name),
+    },
+    queueConfig,
+  );
+
+  return newUser;
 };

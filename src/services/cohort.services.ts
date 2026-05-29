@@ -11,12 +11,65 @@ import { emailQueue } from "../queues/email.queue";
 import { queueConfig } from "../utils/queue-config";
 import { successCohortRegistration } from "../email-templates";
 import { getEnv } from "../config/env";
+import {
+  invalidateCache,
+  buildResourceCacheTargets,
+} from "../utils/redis-cache";
 
 const BASE_URL =
   getEnv("NODE_ENV") === "development"
     ? "http://localhost:3000/"
     : "https://www.alphablocks.tech/";
 const PAYSTACK_SECRET = getEnv("PAYSTACK_SECRET_KEY")!;
+export type PublicationFilter = "all" | "published" | "draft";
+export type DateFilter = "all" | "upcoming" | "ongoing" | "ended";
+
+export const getCohortStats = async () => {
+  const cacheKey = "cohorts:stats";
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const stats = await cohortQueries.getCohortStats();
+
+  await redis.set(cacheKey, JSON.stringify(stats), { EX: 60 });
+  return stats;
+};
+
+export const buildPublicationWhere = (
+  user: Express.User | null,
+  filter: PublicationFilter,
+) => {
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+
+  if (!isAdmin) {
+    return { isPublished: true };
+  }
+
+  switch (filter) {
+    case "published":
+      return { isPublished: true };
+    case "draft":
+      return { isPublished: false };
+    case "all":
+    default:
+      return {};
+  }
+};
+
+export const buildDateWhere = (filter: DateFilter) => {
+  const now = new Date();
+  switch (filter) {
+    case "upcoming":
+      return { startDate: { gt: now } };
+    case "ongoing":
+      return { startDate: { lte: now }, endDate: { gte: now } };
+    case "ended":
+      return { endDate: { lt: now } };
+    case "all":
+    default:
+      return {};
+  }
+};
 
 export const getAllCohorts = async (
   user: Express.User | null,
@@ -24,17 +77,20 @@ export const getAllCohorts = async (
     searchTerm: string;
     page: number;
     limit: number;
+    publication: PublicationFilter;
+    dateFilter: DateFilter;
   },
 ) => {
-  const { searchTerm, page, limit } = queryParams;
+  const { searchTerm, page, limit, publication, dateFilter } = queryParams;
 
   const cachePayload = {
     role: user?.role ?? "USER",
     searchTerm: searchTerm?.trim().toLowerCase() ?? null,
-    page: page,
-    limit: limit,
+    page,
+    limit,
+    publication,
+    dateFilter,
   };
-
   const cacheKey = `cohorts:all:${JSON.stringify(cachePayload)}`;
 
   const cached = await redis.get(cacheKey);
@@ -48,31 +104,22 @@ export const getAllCohorts = async (
         mode: "insensitive",
       },
     }),
-    ...(user?.role !== "ADMIN" &&
-      user?.role !== "SUPERADMIN" && {
-        isPublished: true,
-      }),
+    ...buildPublicationWhere(user, publication),
+    ...buildDateWhere(dateFilter),
   };
 
-  const orderBy =
-    user?.role === "ADMIN" || user?.role === "SUPERADMIN"
-      ? { createdAt: "desc" as const }
-      : { publishedAt: "desc" as const };
+  const orderBy = { publishedAt: "desc" as const };
 
-  const cohorts = await cohortQueries.getAllCohorts(
-    {
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy,
-    },
-    user?.role ?? "USER",
-  );
+  const cohorts = await cohortQueries.getAllCohorts({
+    where,
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy,
+  });
 
   await redis.set(cacheKey, JSON.stringify(cohorts), {
     EX: 60 * 5,
   });
-
   return cohorts;
 };
 
@@ -90,7 +137,7 @@ export const getLatestCohort = async (user: Express.User | null) => {
       }),
   };
 
-  const cohort = await cohortQueries.getLatestCohort(values, user?.role);
+  const cohort = await cohortQueries.getLatestCohort(values);
 
   if (!cohort) throw new AppError("Latest cohort not found", 404);
 
@@ -106,7 +153,7 @@ export const getCohortById = async (
   cohortId: string,
 ) => {
   const cacheKey = `cohorts:id:${cohortId}:${user?.role ?? "USER"}`;
-
+  console.log(user);
   const cacheData = await redis.get(cacheKey);
 
   if (cacheData) return JSON.parse(cacheData);
@@ -126,8 +173,34 @@ export const getCohortById = async (
   await redis.set(cacheKey, JSON.stringify(cohort), {
     EX: 60 * 5,
   });
-
   return cohort;
+};
+
+export const getCohortParticipants = async (
+  user: Express.User | null,
+  cohortId: string,
+) => {
+  const cacheKey = `cohorts:participants:${cohortId}:${user?.role ?? "USER"}`;
+  const cacheData = await redis.get(cacheKey);
+
+  if (cacheData) return JSON.parse(cacheData);
+
+  const values = {
+    id: cohortId,
+    deletedAt: null,
+  };
+
+  const cohort = await cohortQueries.getCohort(values, user?.role);
+
+  if (!cohort) throw new AppError("Cohort not found", 404);
+
+  const participants = await cohortQueries.getCohortParticipants(cohortId);
+
+  await redis.set(cacheKey, JSON.stringify(participants), {
+    EX: 60 * 5,
+  });
+
+  return participants;
 };
 
 export const registerCohort = async (
@@ -138,136 +211,153 @@ export const registerCohort = async (
     id: cohortId,
     deletedAt: null,
   });
-
   if (!cohort) throw new AppError("Cohort not found", 404);
 
   const { email, name, phoneNumber, gender } = data;
 
   const idempotencyKey = createHash("sha256")
-    .update(`${email.trim().toLowerCase()}-${cohortId}`)
+    .update(`${email}-${cohortId}`)
     .digest("hex");
 
   const existingTicket = await ticketQueries.getCohortTicket({
     idempotencyKey,
   });
 
-  if (existingTicket) {
-    if (existingTicket.status === PaymentStatus.COMPLETED)
+  if (existingTicket && existingTicket.initializedAt) {
+    if (existingTicket.status === PaymentStatus.COMPLETED) {
       throw new AppError("Cohort already paid for", 400);
+    }
 
-    const isExpired =
-      !existingTicket.expiresAt ||
-      existingTicket.expiresAt.getTime() < Date.now();
+    // Paystack authorization URLs typically expire ~30min after creation.
+    // Only reuse if we're well within that window.
+    const PAYSTACK_URL_TTL_MS = 25 * 60 * 1000;
+    const ticketAge = Date.now() - existingTicket.initializedAt.getTime();
+    const isReusable =
+      existingTicket.status === PaymentStatus.PENDING &&
+      existingTicket.authorizationUrl &&
+      ticketAge < PAYSTACK_URL_TTL_MS;
 
-    if (!isExpired && existingTicket.authorizationUrl)
+    if (isReusable) {
       return {
         authorizationUrl: existingTicket.authorizationUrl,
         reference: existingTicket.trxRef,
         ticketId: existingTicket.id,
       };
+    }
   }
 
-  await ticketQueries.deleteCohortTicket({
-    where: { idempotencyKey },
-  });
-
   const ticket = await prisma.$transaction(async (tx) => {
+    await tx.cohortTicket.deleteMany({ where: { idempotencyKey } });
+
     const user = await tx.user.upsert({
-      where: { email: email.trim().toLowerCase() },
+      where: { email },
       update: {
-        name: name.trim(),
-        phoneNumber: (phoneNumber || "").trim(),
-        gender,
+        name: name,
+        ...(phoneNumber && { phoneNumber }),
+        ...(gender && { gender }),
       },
       create: {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phoneNumber: (phoneNumber || "").trim(),
+        name,
+        email,
+        phoneNumber,
         gender,
       },
     });
 
-    const participant = await tx.participant.create({
-      data: {
-        cohortId: cohortId,
-        userId: user.id,
+    const participant = await tx.participant.upsert({
+      where: {
+        cohortId_userId: { cohortId, userId: user.id },
       },
+      update: {},
+      create: { cohortId, userId: user.id },
     });
 
-    const trxRef = generateTrxReference();
-
-    const newCohortTicket = await tx.cohortTicket.create({
+    return tx.cohortTicket.create({
       data: {
-        trxRef: trxRef,
+        trxRef: generateTrxReference(),
         amount: "150000",
         ownerId: participant.id,
         idempotencyKey,
         cohortId,
         expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        initializedAt: new Date(Date.now()),
+        initializedAt: new Date(),
       },
-      include: {
-        owner: {
-          select: {
-            user: true,
+    });
+  });
+
+  const callbackUrl = new URL(
+    `cohort-programmes/${cohortId}/register`,
+    BASE_URL,
+  ).toString();
+  const cancelUrl = new URL(
+    `cohort-programmes/${cohortId}`,
+    BASE_URL,
+  ).toString();
+
+  try {
+    const response = await fetchWithRetry(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: email,
+          amount: "150000",
+          reference: ticket.trxRef,
+          callback_url: callbackUrl,
+          metadata: {
+            cancel_action: cancelUrl,
+            ticketId: ticket.id,
           },
+          channels: ["card", "bank"],
+        }),
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET}`,
+          "Content-Type": "application/json",
         },
       },
-    });
+      3,
+      1000,
+    );
 
-    return newCohortTicket;
-  });
+    const paystackData = await response.json();
 
-  if (!ticket) throw new AppError("Failed to create ticket", 400);
+    if (!response.ok || !paystackData.data?.authorization_url) {
+      throw new AppError(
+        paystackData.message || "Failed to initialize Paystack transaction",
+        502,
+      );
+    }
 
-  const params = JSON.stringify({
-    email: ticket.owner.user.email,
-    amount: "150000",
-    reference: ticket.trxRef,
-    callback_url: `${BASE_URL}cohort-programmes/${cohortId}/register`,
-    metadata: {
-      cancel_action: `${BASE_URL}cohort-programmes/${cohortId}`,
-      ticketId: ticket.id,
-    },
-    channels: ["card", "bank"],
-  });
+    const { authorization_url, reference: confirmedReference } =
+      paystackData.data;
 
-  const response = await fetchWithRetry(
-    "https://api.paystack.co/transaction/initialize",
-    {
-      method: "POST",
-      body: params,
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET}`,
-        "Content-Type": "application/json",
-      },
-    },
-    3,
-    1000,
-  );
-
-  const paystackData = await response.json();
-
-  if (!response.ok || !paystackData.data?.authorization_url) {
+    // Persist the authorization URL so future idempotent retries can reuse it
     await prisma.cohortTicket.update({
       where: { id: ticket.id },
-      data: { status: "FAILED" },
+      data: { authorizationUrl: authorization_url },
     });
 
-    throw new AppError(
-      paystackData.message || "Failed to initialize Paystack transaction",
-      500,
-    );
+    await invalidateCache(buildResourceCacheTargets("cohorts", cohortId));
+
+    return {
+      authorizationUrl: authorization_url,
+      reference: confirmedReference,
+      ticketId: ticket.id,
+    };
+  } catch (err) {
+    // Covers both non-OK responses AND thrown network errors from fetchWithRetry
+    await prisma.cohortTicket
+      .update({
+        where: { id: ticket.id },
+        data: { status: PaymentStatus.FAILED },
+      })
+      .catch(() => {
+        // Don't mask the original error if the status update also fails
+      });
+
+    if (err instanceof AppError) throw err;
+    throw new AppError("Failed to initialize payment", 500);
   }
-
-  const { authorization_url, reference: confirmedReference } =
-    paystackData.data;
-
-  return {
-    authorizationUrl: authorization_url,
-    reference: confirmedReference,
-    ticketId: ticket.id,
-  };
 };
 
 export const createCohort = async (data: Prisma.CohortCreateInput) => {
@@ -282,8 +372,7 @@ export const createCohort = async (data: Prisma.CohortCreateInput) => {
 
   if (!newCohort) throw new AppError("Failed to create event", 400);
 
-  const keys = await redis.keys("cohort:all:*");
-  if (keys.length) await redis.del(keys);
+  await invalidateCache(buildResourceCacheTargets("cohorts"));
 
   return newCohort;
 };
@@ -311,31 +400,23 @@ export const updateCohort = async (
 
   const updatedCohort = await cohortQueries.updateCohort(cohortId, data);
 
-  const keys = await redis.keys(`cohorts:id:${cohortId}:*`);
-  if (keys.length) await redis.del(keys);
-
-  const allKeys = await redis.keys("cohorts:all:*");
-  if (allKeys.length) await redis.del(allKeys);
+  await invalidateCache(buildResourceCacheTargets("cohorts", cohortId));
 
   return updatedCohort;
 };
 
-export const deleteCohort = async (eventId: string) => {
-  const existingEvent = await cohortQueries.getCohort({
-    id: eventId,
+export const deleteCohort = async (cohortId: string) => {
+  const existingCohort = await cohortQueries.getCohort({
+    id: cohortId,
   });
 
-  if (!existingEvent) throw new AppError("Event not found", 404);
+  if (!existingCohort) throw new AppError("Event not found", 404);
 
-  const deletedEvent = await cohortQueries.deleteCohort(eventId);
+  const deletedCohort = await cohortQueries.deleteCohort(cohortId);
 
-  const keys = await redis.keys(`events:id:${eventId}:*`);
-  if (keys.length) await redis.del(keys);
+  await invalidateCache(buildResourceCacheTargets("cohorts", cohortId));
 
-  const allKeys = await redis.keys("events:all:*");
-  if (allKeys.length) await redis.del(allKeys);
-
-  return deletedEvent;
+  return deletedCohort;
 };
 
 export const webhook = async (data: Buffer, signature: string) => {
@@ -362,9 +443,8 @@ export const webhook = async (data: Buffer, signature: string) => {
       await emailQueue.add(
         "send-payment-confirmation-email",
         {
-          title: "Payment confirmation",
+          subject: "Payment confirmation",
           to: owner.user.email,
-          name: owner.user.name,
           content: successCohortRegistration(
             owner.user.name,
             cohort?.title,

@@ -8,8 +8,11 @@ import * as schemas from "../lib/schemas";
 import * as teamMemberControllers from "../controllers/team-member.controllers";
 import { upload } from "../config/multer";
 import { addFilePathToBody } from "../middlewares/addFilePathToBody.middleware";
+import { optionalAuth } from "../middlewares/optionalAuth.middleware";
 
 const teamMemberRouter = Router();
+
+teamMemberRouter.use(optionalAuth);
 
 teamMemberRouter.get(
   "/all",
@@ -30,18 +33,23 @@ teamMemberRouter.get(
 
 teamMemberRouter.use(roleAuthorization("SUPERADMIN"));
 
+teamMemberRouter.get("/admin/stats", teamMemberControllers.getTeamMemberStats);
+
 teamMemberRouter.post(
   "/",
   upload.single("image"),
   addFilePathToBody("image"),
-  validate({ params: schemas.createteamMemberSchema }),
+  validate({ body: schemas.createTeamMemberSchema }),
   teamMemberControllers.createTeamMember,
 );
 
 teamMemberRouter.put(
   "/:memberId",
+  upload.single("image"),
+  addFilePathToBody("image"),
   validate({
     params: schemas.teamMemberParamSchema,
+    body: schemas.updateTeamMemberSchema,
   }),
   teamMemberControllers.updateTeamMember,
 );

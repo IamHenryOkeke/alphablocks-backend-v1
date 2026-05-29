@@ -30,8 +30,8 @@ enum Gender {
 model User {
   id                String        @id @default(cuid())
   email             String        @unique
-  password          String?
   googleId          String?       @unique
+  password          String?
   name              String        @db.VarChar(255)
   bio               String?
   image             String?
@@ -72,7 +72,7 @@ model TeamMember {
   title       String
   category    TeamCategory
   twitterUrl  String?
-  linkedinUrl String?
+  linkedInUrl String?
   userId      String       @unique
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime     @default(now())
@@ -85,13 +85,14 @@ model TeamMember {
 enum TokenType {
   PASSWORD_RESET
   EMAIL_VERIFICATION
+  INVITE_TEAM_MEMBER
 }
 
 model Token {
   id      String    @id @default(cuid())
   userId  String
   user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token   String    @unique @default(cuid())
+  token   String    @unique
   type    TokenType
   expires DateTime
 }
@@ -150,27 +151,28 @@ model BlogPost {
 }
 
 model Cohort {
-  id               String         @id @default(cuid())
-  title            String         @db.VarChar(255)
-  slug             String         @unique
-  thumbnailImage   String
-  description      String
-  details          String
-  startDate        DateTime
-  endDate          DateTime
-  isPublished      Boolean        @default(false)
-  publishedAt      DateTime?
-  classTime        String
-  venue            String
-  nftLiveStatus    Boolean        @default(false)
-  whatsappGroupUrl String
-  Participants     Participant[]
-  cohortTickets    CohortTicket[]
-  deletedAt        DateTime?
-  creatorId        String
-  creator          User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  title             String         @db.VarChar(255)
+  slug              String         @unique
+  thumbnailImage    String
+  description       String
+  details           String
+  startDate         DateTime
+  endDate           DateTime
+  isPublished       Boolean        @default(false)
+  publishedAt       DateTime?
+  classTime         String
+  venue             String
+  nftLiveStatus     Boolean        @default(false)
+  whatsappGroupUrl  String
+  nftCertificateUrl String?
+  Participants      Participant[]
+  cohortTickets     CohortTicket[]
+  deletedAt         DateTime?
+  creatorId         String
+  creator           User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([isPublished, publishedAt])
   @@index([creatorId, createdAt])
@@ -189,6 +191,8 @@ model Participant {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   cohortTicket   CohortTicket?
+
+  @@unique([cohortId, userId])
 }
 
 enum PaymentStatus {

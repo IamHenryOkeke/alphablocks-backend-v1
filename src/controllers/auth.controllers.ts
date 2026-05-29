@@ -2,21 +2,31 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
 import * as authService from "../services/auth.services";
 
-export const authSignUp = asyncHandler(
+// export const authSignUp = asyncHandler(
+//   async (req: Request, res: Response): Promise<void> => {
+//     const { email, password, name } = req.body;
+
+//     const user = await authService.signUp({ email, password, name });
+
+//     res.status(201).json({
+//       message:
+//         "Registration successful. Please check your email for a verification link",
+//       user,
+//     });
+//   },
+// );
+
+export const acceptInvite = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { email, password, name } = req.body;
+    await authService.acceptInvite(req.body);
 
-    const user = await authService.signUp({ email, password, name });
-
-    res.status(201).json({
-      message:
-        "Registration successful. Please check your email for a verification link",
-      user,
+    res.status(200).json({
+      message: "Invitation accepted",
     });
   },
 );
 
-export const authLogin = asyncHandler(
+export const login = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
@@ -30,7 +40,7 @@ export const authLogin = asyncHandler(
   },
 );
 
-export const authSendVerificationEmail = asyncHandler(
+export const sendVerificationEmail = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { email } = req.body;
 
@@ -40,7 +50,7 @@ export const authSendVerificationEmail = asyncHandler(
   },
 );
 
-export const authVerifyEmail = asyncHandler(
+export const verifyEmail = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { token } = req.query;
 
@@ -50,7 +60,7 @@ export const authVerifyEmail = asyncHandler(
   },
 );
 
-export const authSendResetPasswordEmail = asyncHandler(
+export const sendResetPasswordEmail = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { email } = req.body;
 
@@ -60,7 +70,7 @@ export const authSendResetPasswordEmail = asyncHandler(
   },
 );
 
-export const authResetPassword = asyncHandler(
+export const resetPassword = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const result = await authService.resetPassword(req.body);
 

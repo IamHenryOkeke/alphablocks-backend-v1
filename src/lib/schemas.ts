@@ -20,8 +20,59 @@ export const createUserSchema = z.object({
     }),
 });
 
+export const getStartedSchema = z.object({
+  name: z
+    .string({ error: "Name is required" })
+    .trim()
+    .min(2, { message: "Name must be at least 2 characters" }),
+
+  email: z
+    .email({ error: "Please enter a valid email address" })
+    .trim()
+    .toLowerCase(),
+
+  gender: z.enum(["MALE", "FEMALE", "OTHER"], {
+    error: "Gender must be either 'MALE','FEMALE','OTHER'",
+  }),
+
+  country: z
+    .string({ error: "Country is required" })
+    .trim()
+    .min(2, { message: "Country must be at least 2 characters" }),
+
+  state: z
+    .string({ error: "State is required" })
+    .trim()
+    .min(2, { message: "State must be at least 2 characters" }),
+
+  phoneNumber: z
+    .string({ error: "Phone number is required" })
+    .trim()
+    .regex(/^\+?[0-9]{10,15}$/, {
+      message: "Please enter a valid phone number (e.g., +2348012345678)",
+    }),
+
+  careerPath: z
+    .string({ error: "Career path is required" })
+    .trim()
+    .min(2, { message: "Career path must be at least 2 characters" }),
+
+  levelOfExperience: z
+    .string({ error: "Level of experience is required" })
+    .trim()
+    .min(2, { message: "Level of experience must be at least 2 characters" }),
+
+  referralMode: z
+    .string({ error: "Referral mode is required" })
+    .trim()
+    .min(2, { message: "Referral mode must be at least 2 characters" }),
+  isSubscribed: z.enum(["YES", "NO"], {
+    error: "Must be either 'YES' or 'NO'",
+  }),
+});
+
 export const loginUserSchema = z.object({
-  email: z.string({ error: "Email is required" }),
+  email: z.email({ error: "Email must be valid" }),
   password: z.string({ error: "Password is required" }).min(6),
 });
 
@@ -70,7 +121,13 @@ export const querySchema = z.object({
     .default(6)
     .optional(),
 
-  searchTerm: z.string().optional(),
+  searchTerm: z.string().trim().toLowerCase().optional(),
+  type: z.string().trim().toLowerCase().optional(),
+  publication: z.enum(["published", "draft", "all"]).default("all").optional(),
+  dateFilter: z
+    .enum(["all", "upcoming", "ongoing", "ended"])
+    .default("all")
+    .optional(),
 });
 
 export const eventParamSchema = z.object({
@@ -153,8 +210,8 @@ const createCohortBaseSchema = createEventBaseSchema
   .extend({
     classTime: z
       .string()
-      .min(5, { error: "Class time must be at least 5 characters long" }),
-    whatsappGroup: z.url({ error: "Must be a valid url" }),
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Please enter a valid time"),
+    whatsappGroupUrl: z.url({ error: "Must be a valid url" }),
     venue: z
       .string()
       .min(5, { error: "Venue must be at least 5 characters long" }),
@@ -168,23 +225,39 @@ export const createCohortSchema = createCohortBaseSchema.refine(
   },
 );
 
-export const updateCohortSchema = createCohortBaseSchema.partial().extend({
-  isPublished: z
-    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
-    .optional(),
-  nftLiveStatus: z
-    .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
-    .optional(),
+export const updateCohortNftSchema = z.object({
+  nftCertificateUrl: z.url({ error: "Must be a valid url" }),
 });
+
+export const updateCohortSchema = createCohortBaseSchema
+  .omit({ startDate: true })
+  .partial()
+  .extend({
+    isPublished: z
+      .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+      .optional(),
+    nftLiveStatus: z
+      .enum(["0", "1"], 'Only inputs of "0" and "1" are allowed')
+      .optional(),
+    startDate: z.iso
+      .datetime({ error: "Start date must be a valid ISO-8601 datetime" })
+      .optional(),
+  });
 
 export const registerCohortSchema = z.object({
   name: z
     .string()
     .min(2, "Full name must be at least 2 characters")
-    .max(100, "Full name is too long"),
-  email: z.email("Invalid email address"),
-  gender: z.enum(["male", "female", "other"], "Please select your gender"),
-  phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number"),
+    .max(100, "Full name is too long")
+    .trim(),
+  email: z.email("Invalid email address").toLowerCase().trim(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"], {
+    error: "Gender must be either 'MALE','FEMALE','OTHER'",
+  }),
+  phoneNumber: z
+    .string()
+    .regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number")
+    .trim(),
 });
 
 export const userParamSchema = z.object({
@@ -195,14 +268,14 @@ export const teamMemberParamSchema = z.object({
   memberId: z.cuid({ error: "Invalid team member ID" }),
 });
 
-export const createteamMemberSchema = z.object({
+export const createTeamMemberSchema = z.object({
   title: z
     .string({ error: "Title is required" })
     .min(5, { error: "Title must be at least 5 characters long" }),
-  twitterUrl: z.url({ error: "Must be a valid url" }),
-  linkedInUrl: z.url({ error: "Must be a valid url" }),
+  twitterUrl: z.url({ error: "Must be a valid url" }).optional(),
+  linkedInUrl: z.url({ error: "Must be a valid url" }).optional(),
   image: z.url({ error: "Must be a valid url" }),
-  userId: z.cuid({ error: "Invalid user ID" }),
+  email: z.email({ error: "Email is required" }),
   category: z.enum(
     [
       "FOUNDER",
@@ -216,4 +289,32 @@ export const createteamMemberSchema = z.object({
       error: "Invalid category",
     },
   ),
+});
+
+export const updateTeamMemberSchema = createTeamMemberSchema
+  .omit({
+    email: true,
+  })
+  .partial()
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided to update",
+    path: ["updateData"],
+  });
+
+export const acceptInviteSchema = z.object({
+  password: z
+    .string()
+    .min(8, { error: "Password must be at least 8 characters long" })
+    .regex(/[A-Z]/, {
+      error: "Password must contain at least one uppercase letter",
+    })
+    .regex(/[a-z]/, {
+      error: "Password must contain at least one lowercase letter",
+    })
+    .regex(/[0-9]/, { error: "Password must contain at least one number" })
+    .regex(/[^A-Za-z0-9]/, {
+      error: "Password must contain at least one special character",
+    }),
+  token: z.string({ error: "Token is required" }),
 });

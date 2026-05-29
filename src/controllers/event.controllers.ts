@@ -3,6 +3,19 @@ import { Request, Response } from "express";
 import * as eventService from "../services/event.services";
 import { generateSlug } from "../utils/slug";
 
+export const getEventStats = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const data = await eventService.getEventStats();
+
+    res.status(200).json({
+      message: "Event stats fetched successfully",
+      data: {
+        stats: data,
+      },
+    });
+  },
+);
+
 export const getAllEvents = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user as Express.User;
@@ -21,7 +34,7 @@ export const getLatestEvent = asyncHandler(
     const data = await eventService.getLatestEvent(user);
 
     res.status(200).json({
-      message: "Events fetched successfully",
+      message: "Latest event fetched successfully",
       data,
     });
   },

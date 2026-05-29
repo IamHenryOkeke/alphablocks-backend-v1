@@ -34,7 +34,7 @@ const fileFilter = (
       }),
     );
   }
-  if (file.size > 1 * 1024 * 1024) {
+  if (file.size > 1.5 * 1024 * 1024) {
     return cb(
       new AppError("File too large", 400, {
         [`${fieldname}`]: "File size should be less than 1MB",
@@ -46,6 +46,6 @@ const fileFilter = (
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 1 * 1024 * 1024 },
+  limits: { fileSize: 1.5 * 1024 * 1024 },
   fileFilter,
 });

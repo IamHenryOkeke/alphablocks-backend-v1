@@ -71,6 +71,7 @@ async function main() {
     title: `Tech Event ${index + 1}`,
     slug: `tech-event-${index + 1}`,
     image: `https://example.com/events/event-${index + 1}.jpg`,
+    thumbnailImage: `https://example.com/events/event-${index + 1}-thumb.jpg`,
     description: "A tech-focused community event",
     details: "Networking, talks, and workshops",
     isPublished: true,

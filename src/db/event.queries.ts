@@ -29,6 +29,7 @@ export async function getAllEvents(
           endDate: true,
           location: true,
           publishedAt: true,
+          thumbnailImage: true,
           ...((role === "ADMIN" || role === "SUPERADMIN") && {
             isPublished: true,
             creatorId: true,
@@ -62,38 +63,59 @@ export async function getAllEvents(
   }
 }
 
+export async function getEventStats() {
+  const now = new Date();
+  const notDeleted: Prisma.EventWhereInput = { deletedAt: null };
+
+  const [total, published, drafts, upcoming, ongoing, ended] =
+    await Promise.all([
+      prisma.event.count({ where: notDeleted }),
+      prisma.event.count({ where: { ...notDeleted, isPublished: true } }),
+      prisma.event.count({ where: { ...notDeleted, isPublished: false } }),
+      prisma.event.count({
+        where: { ...notDeleted, isPublished: true, startDate: { gt: now } },
+      }),
+      prisma.event.count({
+        where: {
+          ...notDeleted,
+          isPublished: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+      }),
+      prisma.event.count({
+        where: { ...notDeleted, isPublished: true, endDate: { lt: now } },
+      }),
+    ]);
+
+  return {
+    total,
+    published,
+    drafts,
+    upcoming,
+    ongoing,
+    ended,
+  };
+}
+
 export async function getLatestEvent(
   values: Prisma.EventFindFirstArgs["where"],
-  role?: Role,
 ) {
   try {
-    const data = await prisma.event.findFirst({
+    const data = await prisma.event.findMany({
       where: values,
       select: {
         id: true,
         title: true,
         description: true,
-        details: true,
-        startDate: true,
-        endDate: true,
         location: true,
         publishedAt: true,
-        ...((role === "ADMIN" || role === "SUPERADMIN") && {
-          creatorId: true,
-          isPublished: true,
-          deletedAt: true,
-          createdAt: true,
-          updatedAt: true,
-        }),
-        eventImages: {
-          select: {
-            imageUrl: true,
-          },
-        },
+        thumbnailImage: true,
       },
       orderBy: {
         publishedAt: "desc",
       },
+      take: 1,
     });
     return data;
   } catch (error) {
@@ -125,6 +147,7 @@ export async function getEvent(
         endDate: true,
         location: true,
         publishedAt: true,
+        thumbnailImage: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
           slug: true,
           creatorId: true,

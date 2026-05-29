@@ -2,6 +2,17 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
 import * as userService from "../services/user.services";
 
+export const getStarted = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const data = await userService.getStarted(req.body);
+
+    res.status(200).json({
+      message: "You successfully signed up on Alphablocks",
+      data,
+    });
+  },
+);
+
 export const getAllUsers = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const data = await userService.getAllUsers(req.validatedQuery);

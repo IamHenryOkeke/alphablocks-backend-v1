@@ -28,7 +28,7 @@ cohortRouter.get(
   cohortController.getCohortById,
 );
 
-cohortRouter.get(
+cohortRouter.post(
   "/:cohortId/register",
   validate({
     params: schemas.cohortParamSchema,
@@ -38,6 +38,14 @@ cohortRouter.get(
 );
 
 cohortRouter.use(isAuthenticated, roleAuthorization(["ADMIN", "SUPERADMIN"]));
+
+cohortRouter.get("/admin/stats", cohortController.getCohortStats);
+
+cohortRouter.get(
+  "/:cohortId/participants",
+  validate({ params: schemas.cohortParamSchema, query: schemas.querySchema }),
+  cohortController.getCohortParticipants,
+);
 
 cohortRouter.post(
   "/",
@@ -56,6 +64,17 @@ cohortRouter.put(
     body: schemas.updateCohortSchema,
   }),
   cohortController.updateCohort,
+);
+
+cohortRouter.put(
+  "/:cohortId/nft-certificate",
+  upload.single("nftCertificateUrl"),
+  addFilePathToBody("nftCertificateUrl"),
+  validate({
+    params: schemas.cohortParamSchema,
+    body: schemas.updateCohortNftSchema,
+  }),
+  cohortController.updateCohortCertificate,
 );
 
 cohortRouter.delete(

@@ -1,56 +1,57 @@
 import { Router } from "express";
-import {
-  createUserSchema,
-  loginUserSchema,
-  resetPassswordSchema,
-  sendVerificationLinkSchema,
-  verifyAccountQuerySchema,
-} from "../lib/schemas";
-import passport from "passport";
-import { signJWT } from "../utils/jwt";
+import * as schemas from "../lib/schemas";
 import { validate } from "../middlewares/validation";
 import * as authControllers from "../controllers/auth.controllers";
+import { rateLimiter } from "../middlewares/rate-limiter.middleware";
+import passport from "passport";
+import { signJWT } from "../utils/jwt";
 import { User } from "../generated/prisma/client";
 
 const authRouter = Router();
 
-authRouter.post(
-  "/sign-up",
-  validate({ body: createUserSchema }),
-  authControllers.authSignUp,
-);
-
 authRouter.get(
   "/verify-account",
-  validate({ query: verifyAccountQuerySchema }),
-  authControllers.authVerifyEmail,
+  validate({ query: schemas.verifyAccountQuerySchema }),
+  authControllers.verifyEmail,
 );
 authRouter.post(
   "/request-verification-link",
-  validate({ body: sendVerificationLinkSchema }),
-  authControllers.authSendVerificationEmail,
+  validate({ body: schemas.sendVerificationLinkSchema }),
+  authControllers.sendVerificationEmail,
+);
+
+authRouter.post(
+  "/accept-admin-invite",
+  rateLimiter(5),
+  validate({
+    body: schemas.acceptInviteSchema,
+  }),
+  authControllers.acceptInvite,
 );
 
 authRouter.post(
   "/login",
-  validate({ body: loginUserSchema }),
-  authControllers.authLogin,
+  rateLimiter(5),
+  validate({ body: schemas.loginUserSchema }),
+  authControllers.login,
 );
 authRouter.post(
   "/request-password-reset",
-  validate({ body: sendVerificationLinkSchema }),
-  authControllers.authSendResetPasswordEmail,
+  rateLimiter(5),
+  validate({ body: schemas.sendVerificationLinkSchema }),
+  authControllers.sendResetPasswordEmail,
 );
 authRouter.post(
   "/reset-password",
-  validate({ body: resetPassswordSchema }),
-  authControllers.authResetPassword,
+  validate({ body: schemas.resetPassswordSchema }),
+  authControllers.resetPassword,
 );
 
 authRouter.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] }),
 );
+// /api/auth/google
 authRouter.get(
   "/google/callback",
   passport.authenticate("google", { session: false }),

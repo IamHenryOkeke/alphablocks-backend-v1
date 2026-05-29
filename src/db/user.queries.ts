@@ -1,6 +1,7 @@
 import { AppError } from "../error/errorHandler";
 import { Prisma } from "../generated/prisma/client";
 import prisma from "../lib/prisma";
+import { PrismaTransactionClient } from "./team-member.queries";
 
 type GetUsersArgs = {
   where?: Prisma.UserWhereInput;
@@ -9,15 +10,13 @@ type GetUsersArgs = {
   orderBy?: Prisma.UserOrderByWithRelationInput;
 };
 
-export async function getAllUsers({
-  where,
-  take,
-  skip,
-  orderBy,
-}: GetUsersArgs) {
+export async function getAllUsers(
+  { where, take, skip, orderBy }: GetUsersArgs,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
     const [users, total] = await Promise.all([
-      prisma.user.findMany({
+      tx.user.findMany({
         where,
         take,
         skip,
@@ -33,7 +32,7 @@ export async function getAllUsers({
           updatedAt: true,
         },
       }),
-      prisma.user.count({ where }),
+      tx.user.count({ where }),
     ]);
 
     return {
@@ -52,13 +51,21 @@ export async function getAllUsers({
   }
 }
 
-export async function getUserByEmail(email: string) {
+export async function getUserByEmail(
+  email: string,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.user.findUnique({
+    const data = await tx.user.findUnique({
       where: {
         email,
+        deletedAt: null,
+      },
+      include: {
+        teamMember: true,
       },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -70,9 +77,38 @@ export async function getUserByEmail(email: string) {
   }
 }
 
-export async function getUserById(id: string) {
+export async function getUserByGoogleId(
+  email: string,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.user.findUnique({
+    const data = await tx.user.findUnique({
+      where: {
+        googleId,
+        deletedAt: null,
+      },
+      include: {
+        teamMember: true,
+      },
+    });
+
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error occured while finding user by email", error.message);
+    } else {
+      console.error("Error occured while finding user by email", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
+export async function getUserById(
+  id: string,
+  tx: PrismaTransactionClient = prisma,
+) {
+  try {
+    const data = await tx.user.findUnique({
       where: {
         id,
         deletedAt: null,
@@ -81,6 +117,7 @@ export async function getUserById(id: string) {
         teamMember: true,
       },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -92,33 +129,15 @@ export async function getUserById(id: string) {
   }
 }
 
-export async function getUserByGoogleId(googleId: string) {
+export async function createUser(
+  values: Prisma.UserCreateInput,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.user.findUnique({
-      where: {
-        googleId,
-        deletedAt: null,
-      },
-    });
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(
-        "Error occured while finding user by google id",
-        error.message,
-      );
-    } else {
-      console.error("Error occured while finding user by google id", error);
-    }
-    throw new AppError("Internal server error", 500);
-  }
-}
-
-export async function createUser(values: Prisma.UserCreateInput) {
-  try {
-    const data = await prisma.user.create({
+    const data = await tx.user.create({
       data: values,
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -130,12 +149,17 @@ export async function createUser(values: Prisma.UserCreateInput) {
   }
 }
 
-export async function updateUser(id: string, values: Prisma.UserUpdateInput) {
+export async function updateUser(
+  id: string,
+  values: Prisma.UserUpdateInput,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.user.update({
+    const data = await tx.user.update({
       where: { id },
       data: values,
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -147,14 +171,18 @@ export async function updateUser(id: string, values: Prisma.UserUpdateInput) {
   }
 }
 
-export async function deleteUser(id: string) {
+export async function deleteUser(
+  id: string,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.user.update({
+    const data = await tx.user.update({
       where: { id },
       data: {
         deletedAt: new Date(),
       },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {

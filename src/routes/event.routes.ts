@@ -22,6 +22,8 @@ eventRouter.get(
 
 eventRouter.get("/latest", optionalAuth, eventControllers.getLatestEvent);
 
+eventRouter.get("/admin/stats", eventControllers.getEventStats);
+
 eventRouter.get(
   "/:eventId",
   validate({ params: schemas.eventParamSchema }),

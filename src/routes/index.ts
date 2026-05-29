@@ -1,4 +1,5 @@
 import indexRouter from "./index.routes";
+import overviewRouter from "./overview.routes";
 import authRouter from "./auth.routes";
 import userRouter from "./user.routes";
 import teamMemberRouter from "./team-member.routes";
@@ -16,4 +17,5 @@ export {
   blogRouter,
   cohortRouter,
   webhookRouter,
+  overviewRouter,
 };

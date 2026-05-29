@@ -1,5 +1,5 @@
 import { AppError } from "../error/errorHandler";
-import { Prisma, Role } from "../generated/prisma/client";
+import { PaymentStatus, Prisma, Role } from "../generated/prisma/client";
 import prisma from "../lib/prisma";
 
 type GetCohortsArgs = {
@@ -9,10 +9,14 @@ type GetCohortsArgs = {
   orderBy?: Prisma.CohortOrderByWithRelationInput;
 };
 
-export async function getAllCohorts(
-  { where, take, skip, orderBy }: GetCohortsArgs,
-  role?: Role,
-) {
+const koboToNaira = (kobo: number) => kobo / 100;
+
+export async function getAllCohorts({
+  where,
+  take,
+  skip,
+  orderBy,
+}: GetCohortsArgs) {
   try {
     const [cohorts, total] = await Promise.all([
       prisma.cohort.findMany({
@@ -23,22 +27,11 @@ export async function getAllCohorts(
         select: {
           id: true,
           title: true,
-          thumbnailImage: true,
           description: true,
-          details: true,
+          thumbnailImage: true,
           startDate: true,
           endDate: true,
-          venue: true,
           publishedAt: true,
-          classTime: true,
-          nftLiveStatus: true,
-          ...((role === "ADMIN" || role === "SUPERADMIN") && {
-            isPublished: true,
-            creatorId: true,
-            deletedAt: true,
-            createdAt: true,
-            updatedAt: true,
-          }),
         },
       }),
       prisma.cohort.count({ where }),
@@ -60,36 +53,82 @@ export async function getAllCohorts(
   }
 }
 
+export async function getCohortStats() {
+  const now = new Date();
+  const notDeleted: Prisma.CohortWhereInput = { deletedAt: null };
+
+  const [
+    total,
+    published,
+    drafts,
+    upcoming,
+    ongoing,
+    ended,
+    totalParticipants,
+    completedTickets,
+  ] = await Promise.all([
+    prisma.cohort.count({ where: notDeleted }),
+    prisma.cohort.count({ where: { ...notDeleted, isPublished: true } }),
+    prisma.cohort.count({ where: { ...notDeleted, isPublished: false } }),
+    prisma.cohort.count({
+      where: { ...notDeleted, isPublished: true, startDate: { gt: now } },
+    }),
+    prisma.cohort.count({
+      where: {
+        ...notDeleted,
+        isPublished: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+    }),
+    prisma.cohort.count({
+      where: { ...notDeleted, isPublished: true, endDate: { lt: now } },
+    }),
+    prisma.participant.count({
+      where: { deletedAt: null, cohort: notDeleted },
+    }),
+    prisma.cohortTicket.findMany({
+      where: { status: PaymentStatus.COMPLETED },
+      select: { amount: true },
+    }),
+  ]);
+
+  const totalRevenue = koboToNaira(
+    completedTickets.reduce((s, t) => s + Number(t.amount || 0), 0),
+  );
+
+  return {
+    total,
+    published,
+    drafts,
+    upcoming,
+    ongoing,
+    ended,
+    totalParticipants,
+    totalRevenue,
+    currency: "NGN",
+  };
+}
+
 export async function getLatestCohort(
   values: Prisma.CohortFindFirstArgs["where"],
-  role?: Role,
 ) {
   try {
-    const data = await prisma.cohort.findFirst({
+    const data = await prisma.cohort.findMany({
       where: values,
       select: {
         id: true,
         title: true,
         thumbnailImage: true,
         description: true,
-        details: true,
         startDate: true,
         endDate: true,
         venue: true,
-        publishedAt: true,
-        classTime: true,
-        nftLiveStatus: true,
-        ...((role === "ADMIN" || role === "SUPERADMIN") && {
-          isPublished: true,
-          creatorId: true,
-          deletedAt: true,
-          createdAt: true,
-          updatedAt: true,
-        }),
       },
       orderBy: {
         publishedAt: "desc",
       },
+      take: 1,
     });
     return data;
   } catch (error) {
@@ -126,10 +165,12 @@ export async function getCohort(
         nftLiveStatus: true,
         ...((role === "ADMIN" || role === "SUPERADMIN") && {
           isPublished: true,
+          whatsappGroupUrl: true,
           creatorId: true,
           deletedAt: true,
           createdAt: true,
           updatedAt: true,
+          nftCertificateUrl: true,
         }),
       },
     });
@@ -139,6 +180,44 @@ export async function getCohort(
       console.error("Error occured while finding cohort by id", error.message);
     } else {
       console.error("Error occured while finding cohort by id", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
+export async function getCohortParticipants(cohortId: string) {
+  try {
+    const data = await prisma.participant.findMany({
+      where: { cohortId, deletedAt: null },
+      select: {
+        id: true,
+        walletAddress: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+        cohortTicket: {
+          select: {
+            trxRef: true,
+            amount: true,
+            status: true,
+          },
+        },
+      },
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(
+        "Error occured while finding cohort participants",
+        error.message,
+      );
+    } else {
+      console.error("Error occured while finding cohort participants", error);
     }
     throw new AppError("Internal server error", 500);
   }

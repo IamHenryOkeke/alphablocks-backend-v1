@@ -1,6 +1,11 @@
 import { AppError } from "../error/errorHandler";
-import { Prisma } from "../generated/prisma/client";
+import { Prisma, PrismaClient, Role } from "../generated/prisma/client";
 import prisma from "../lib/prisma";
+
+export type PrismaTransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
 
 type GetUsersArgs = {
   where?: Prisma.TeamMemberWhereInput;
@@ -9,15 +14,16 @@ type GetUsersArgs = {
   orderBy?: Prisma.TeamMemberOrderByWithRelationInput;
 };
 
-export async function getAllTeamMembers({
-  where,
-  take,
-  skip,
-  orderBy,
-}: GetUsersArgs) {
+export async function getAllTeamMembers(
+  { where, take, skip, orderBy }: GetUsersArgs,
+  role?: Role,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const [users, total] = await Promise.all([
-      prisma.teamMember.findMany({
+    const isSuperAdmin = role === "SUPERADMIN";
+
+    const [members, total] = await Promise.all([
+      tx.teamMember.findMany({
         where,
         take,
         skip,
@@ -26,22 +32,23 @@ export async function getAllTeamMembers({
           id: true,
           title: true,
           category: true,
-          linkedinUrl: true,
+          linkedInUrl: true,
           twitterUrl: true,
           user: {
             select: {
               id: true,
               name: true,
-              email: true,
+              image: true,
+              ...(isSuperAdmin && { role: true }),
             },
           },
         },
       }),
-      prisma.teamMember.count({ where }),
+      tx.teamMember.count({ where }),
     ]);
 
     return {
-      users,
+      members,
       total,
       totalPage: take ? Math.ceil(total / take) : 1,
       page: skip && take ? Math.ceil(skip / take) + 1 : 1,
@@ -59,9 +66,41 @@ export async function getAllTeamMembers({
   }
 }
 
-export async function getTeamMemberById(id: string) {
+export async function getTeamStats(tx: PrismaTransactionClient = prisma) {
   try {
-    const data = await prisma.teamMember.findUnique({
+    const [total, invited] = await Promise.all([
+      tx.teamMember.count({
+        where: { deletedAt: null },
+      }),
+      tx.teamMember.count({
+        where: {
+          deletedAt: null,
+          user: { role: "USER" },
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      active: total - invited,
+      invited,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error occured while fetching team stats", error.message);
+    } else {
+      console.error("Error occured while fetching team stats", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
+export async function getTeamMemberById(
+  id: string,
+  tx: PrismaTransactionClient = prisma,
+) {
+  try {
+    const data = await tx.teamMember.findUnique({
       where: {
         id,
         deletedAt: null,
@@ -70,6 +109,7 @@ export async function getTeamMemberById(id: string) {
         user: true,
       },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -84,9 +124,12 @@ export async function getTeamMemberById(id: string) {
   }
 }
 
-export async function getTeamMemberByUserId(userId: string) {
+export async function getTeamMemberByUserId(
+  userId: string,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.teamMember.findUnique({
+    const data = await tx.teamMember.findUnique({
       where: {
         userId,
         deletedAt: null,
@@ -113,11 +156,18 @@ export async function getTeamMemberByUserId(userId: string) {
   }
 }
 
-export async function createTeamMember(values: Prisma.TeamMemberCreateInput) {
+export async function createTeamMember(
+  values: Prisma.TeamMemberCreateInput,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.teamMember.create({
+    const data = await tx.teamMember.create({
       data: values,
+      include: {
+        user: true,
+      },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -132,12 +182,14 @@ export async function createTeamMember(values: Prisma.TeamMemberCreateInput) {
 export async function updateTeamMember(
   id: string,
   values: Prisma.TeamMemberUpdateInput,
+  tx: PrismaTransactionClient = prisma,
 ) {
   try {
-    const data = await prisma.teamMember.update({
+    const data = await tx.teamMember.update({
       where: { id },
       data: values,
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -149,14 +201,32 @@ export async function updateTeamMember(
   }
 }
 
-export async function deleteTeamMember(id: string) {
+export async function deleteTeamMember(
+  id: string,
+  tx: PrismaTransactionClient = prisma,
+) {
   try {
-    const data = await prisma.teamMember.update({
+    const data = await tx.teamMember.update({
       where: { id },
       data: {
         deletedAt: new Date(),
+        user: {
+          update: {
+            role: "USER",
+            password: null,
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
+
     return data;
   } catch (error) {
     if (error instanceof Error) {

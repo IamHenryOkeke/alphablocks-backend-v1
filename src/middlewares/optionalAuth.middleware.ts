@@ -11,38 +11,46 @@ export const optionalAuth = async (
   try {
     const authHeader = req.headers.authorization;
 
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-
-      if (!token) {
-        return next();
-      }
-
-      const decoded = jwt.verify(token, getEnv("JWT_SECRET")) as {
-        id: string;
-      };
-
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      if (user) {
-        req.user = user;
-      }
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return next();
     }
 
-    next();
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, getEnv("JWT_SECRET")) as {
+      id: string;
+    };
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid token: user not found" });
+    }
+
+    req.user = user;
+    return next();
   } catch (error) {
+    if (
+      error instanceof jwt.JsonWebTokenError ||
+      error instanceof jwt.TokenExpiredError
+    ) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
     console.error("Error in optionalAuth middleware:", error);
-    next();
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -8,9 +8,9 @@ import { sendMail } from "../lib/nodemailer";
 new Worker(
   "email-queue",
   async (job: Job) => {
-    const { title, to, name, content } = job.data;
+    const { subject, to, content } = job.data;
 
-    await sendMail(title, (name || to) as string, to, content);
+    await sendMail(subject, to, content);
   },
   { connection: redis.options },
 );
