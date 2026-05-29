@@ -3,9 +3,6 @@ import * as schemas from "../lib/schemas";
 import { validate } from "../middlewares/validation";
 import * as authControllers from "../controllers/auth.controllers";
 import { rateLimiter } from "../middlewares/rate-limiter.middleware";
-// import passport from "passport";
-// import { signJWT } from "../utils/jwt";
-// import { User } from "../generated/prisma/client";
 
 const authRouter = Router();
 
