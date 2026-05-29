@@ -3,9 +3,9 @@ import * as schemas from "../lib/schemas";
 import { validate } from "../middlewares/validation";
 import * as authControllers from "../controllers/auth.controllers";
 import { rateLimiter } from "../middlewares/rate-limiter.middleware";
-import passport from "passport";
-import { signJWT } from "../utils/jwt";
-import { User } from "../generated/prisma/client";
+// import passport from "passport";
+// import { signJWT } from "../utils/jwt";
+// import { User } from "../generated/prisma/client";
 
 const authRouter = Router();
 
@@ -47,25 +47,25 @@ authRouter.post(
   authControllers.resetPassword,
 );
 
-authRouter.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] }),
-);
-// /api/auth/google
-authRouter.get(
-  "/google/callback",
-  passport.authenticate("google", { session: false }),
-  (req, res) => {
-    const user = req.user as User;
+// authRouter.get(
+//   "/google",
+//   passport.authenticate("google", { scope: ["profile", "email"] }),
+// );
+// // /api/auth/google
+// authRouter.get(
+//   "/google/callback",
+//   passport.authenticate("google", { session: false }),
+//   (req, res) => {
+//     const user = req.user as User;
 
-    const token = signJWT(user, 60 * 15);
+//     const token = signJWT(user, 60 * 15);
 
-    res.status(200).json({
-      message: "Login successful",
-      token,
-      user,
-    });
-  },
-);
+//     res.status(200).json({
+//       message: "Login successful",
+//       token,
+//       user,
+//     });
+//   },
+// );
 
 export default authRouter;
